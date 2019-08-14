@@ -1,4 +1,4 @@
-# Converts Excel to GDX files.
+# Convert Excel to GDX
 #
 # This can replace GDXXRW for Excel-to-GDX conversion and accepts the same
 # arguments and a subset of the options that GDXXRW does, Unlike GDXXRW,
@@ -7,38 +7,48 @@
 # For further information, see the GDXXRW documentation at:
 # https://www.gams.com/latest/docs/T_GDXXRW.html
 #
-# Required packages:
-# tidyverse package collection: https://www.tidyverse.org/
-# gdxrrw: https://www.gams.com/latest/docs/T_GDXRRW.html
-
-# Beware, on Windows installing the gdxrrw source package will not work unless
-# you have a compiler installed, install a binary package instead. Binary
-# packages are provided for specific operating systems and R versions,
-# carefully select the appropriate package for download.
+# This script uses the GAMS CSV2GDX and GDXMERGE binaries to help peform
+# the conversion. These binaries are located in the GAMS system directory.
+# The GAMS system directory should either be part of your PATH environment
+# variable, or it can be specified via the sysdir= option.
+#
+# When calling or executing this script from GAMS, it is recommended to
+# explictely provide the GAMS system directory via the sysdir= option as
+# shown below:
+# $call Rscript xl2gdx.R <Excel file> sysdir="%gams.sysdir%" [options] [@options file]
+# or
+# execute 'Rscript xl2gdx.R <Excel file> sysdir="%gams.sysdir%" [options] [@options file]'
+#
+# Requirements:
+# tidyverse R package collection: https://www.tidyverse.org/
 #
 # Author: Albert Brouwer
 
 options(tidyverse.quiet=TRUE)
 library(tidyverse)
 library(readxl) # is installed when you install tidyverse
-library(gdxrrw)
 
 # ---- Parse arguments and options ----
 
 args <- commandArgs(trailingOnly=TRUE)
 USAGE <- str_c("Usage:",
-              "Rscript xl2gdx.R <Excel file> [output=<GDX file>] [options] [@<options file>]",
+              "Rscript xl2gdx.R <Excel file> [options] [@<options file>]",
               "Options:",
+              "output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
+              "sysdir=<GAMS system directory> (pass %gams.sysdir%, if not csv2gdx and gdxmerge must be on-path)",
               "rng=<sheet>!<start_colrow>:<stop_colrow>",
               "par=<parameter to write>",
               "cdim=<number of column dimensions>",
-              "rrim=<number of row dimensions>",
+              "rdim=<number of row dimensions>",
               "index=<sheet>!<start_colrow>",
               sep="\n")
 
-VALID_OPTIONS <- c("output", "o", "rng", "par", "cdim", "rdim", "index")
+VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "cdim", "rdim", "index")
 
-args = c(readxl_example("datasets.xls"), "output=foooooo.gdx")
+#TOD: remove test code below
+#args = c(readxl_example("datasets.xls"), "output=foooooo.gdx")
+#print(args)
+#quit(save="no")
 
 
 # Display usage if needed
@@ -77,7 +87,7 @@ if (length(args) > 1) {
     } else {
       # is the option argument valid?
       if (!(str_to_lower(option_matches[i, 2]) %in% VALID_OPTIONS)) {
-        stop(str_glue("Invalid option: '{args[i]}'!"))
+        stop(str_glue("Unknown option: '{args[i]}'!"))
       }
     }
   }
@@ -89,24 +99,62 @@ if (!is.na(options_file)) {
 # Stick the options into a dict-like for indexing by name
 options <- structure(option_matches[,3][!is.na(option_matches[,1])], names=str_to_lower(option_matches[,2][!is.na(option_matches[,1])]))
 
-# Determine the GDX output file
+# Use given GDX output file, or set default
 gdx_file <- options["output"]
-if (is.na(gdx_file)) {
-  gdx_file <- options["o"]
-}
 if (is.na(gdx_file)) {
   gdx_file <- str_c(excel_base_path, ".gdx")
 }
 
-# ---- Convert Excel to GDX ----
-
-var2gdx <- function(gdx, var){
-  uels <- list()
-  for(n in 1:(length(var$uels) - 1)){
-    uels[[n]] <- list(name=var$domains[[n]], type="set", uels=list(var$uels[[n]]))
+# Use given GAMS system directory to find csv2gdx and gdxmerge binaries, or default to on-path
+csv2gdx <- "csv2gdx"
+gdxmerge <- "gdxmerge"
+if (!is.na(options["sysdir"])) {
+  sep = ""
+  if (!(str_sub(options["sysdir"], -1) %in% c("/", "\\"))) {
+    sep = "/"
   }
-  wgdx(gdx, var, uels)
+  csv2gdx <- str_c(options["sysdir"], csv2gdx, sep=sep)
+  gdxmerge <- str_c(options["sysdir"], gdxmerge, sep=sep)
 }
-tib <- read_excel(excel_file)
-print(tbl, n=Inf)
-var2gdx(gdx_file, tbl)
+
+# Check any provided range
+range = NULL
+if (!is.na(options["rng"])) {
+  range <- options["rng"]
+  if (is.na(str_match(options["rng"], "^.+[!].+[:].+$"))) {
+    stop(str_glue("Invalid rng option: '{range}' format should be <sheet>!<start_colrow>:<end_colrow>!"))
+  }
+}
+
+# Check rdim and cdim
+if (is.na(options("rdim"))) {
+  stop("Missing rdim option!")
+}
+if (is.na(options("cdim"))) {
+  stop("Missing cdim option!")
+}
+
+
+# ---- Convert Excel to CSV ----
+
+
+tib <- read_excel(excel_file, range=range)
+#csv_file <- tempfile()
+csv_file <- str_c(excel_base_path, ".csv")
+write_csv(tib, csv_file, na="")
+print(csv_file)
+
+# ---- Convert CSV to GDX ----
+
+outerr <- system2(csv2gdx, args=c(str_glue('"{csv_file}"'),
+                                  str_glue("id={options['par']}"),
+                                  str_glue('output="{gdx_file}"'),
+                                  str_glue("index={options['rdim']}"),
+                                  str_glue("useHeader=y"),
+                                  str_glue("values={as.integer(options['rdim'])+1}..lastCol")
+                                  ), stdout=TRUE, stderr=TRUE)
+cat(outerr, sep="\n")
+if (!is.null(attr(outerr, "status")) && attr(outerr, "status") != 0) {
+  cat(outerr, sep="\n")
+  stop("Invocation of csv2gdx failed!")
+}
