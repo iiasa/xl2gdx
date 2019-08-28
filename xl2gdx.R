@@ -20,6 +20,19 @@
 # The GAMS system directory should either be part of your PATH environment
 # variable, or it can be specified via the sysdir= option.
 #
+# To locate the GDX libraries in the GAMS system directory, the path specified
+# via the sysdir option is used if provided. Otherwise, the R_GAMS_SYSDIR
+# environment variable is used if set. Otherwise the GDX libraries are loaded
+# via the system-specific library search mechanism (e.g. the PATH on Windows or
+# LD_LIBRARY_PATH on Linux). The GDX libraries are used via gdxrrw to write
+# the output GDX.
+#
+# BEWARE, to guarantee that the written GDX files will load into the GAMS
+# version you are using, make sure that the GAMS system directory from which
+# the GDX libraries are loaded is not that of a newer GAMS version: the GDX
+# format can change between GAMS versions such that older GAMS versions cannot
+# load the new format,
+#
 # BEWARE, special characters in the Excel file are projected onto their
 # closest ASCII look-alikes so as to avoid later character encoding issues.
 # By limiting to ASCII, locale and platform dependencies are avoided.
@@ -27,17 +40,12 @@
 # what appears to be a locale-dependent encoding.
 #
 # Author: Albert Brouwer
-#
-# Todo:
-# Add sysdir parameter and documentation for igdx with NULL default.
 
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
 library(tidyverse)
 library(readxl) # is installed when you install tidyverse
 library(stringi) # is installed when you install tidyverse
-
-igdx("C:\\GAMS\\win64\\28.1")
 
 # ---- Parse arguments and options ----
 
@@ -47,11 +55,11 @@ USAGE <- str_c("Usage:",
               "Options:",
               "output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
               "sysdir=<GAMS system directory> (pass %gams.sysdir%)",
-              "rng=<sheet>!<start_colrow>:<stop_colrow>",
+              "rng='<sheet>!<start_colrow>:<stop_colrow>'",
               "par=<parameter to write>",
               "cdim=<number of column dimensions>",
               "rdim=<number of row dimensions>",
-              "index=<sheet>!<start_colrow>",
+              "index='<sheet>!<start_colrow>'",
               sep="\n")
 
 VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "cdim", "rdim", "index")
@@ -60,7 +68,7 @@ VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "cdim", "rdim", "index")
 #setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test1"))
 setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test2"))
 #args = c("test1.xls", "output=test1.gdx", "par=para", "rng=toUse!c4:f39", "rdim=1", "cdim=1")
-args = c("test2.xlsx", "output=test2.gdx", "par=para", "rng=CommodityBalancesCrops1!a1:bb65501", "rdim=7", "cdim=1")
+args = c("test2.xlsx", "output=test2.gdx", "par=para", "rng=CommodityBalancesCrops1!a1:bb65501", "rdim=7", "cdim=1", "sysdir=C:\\GAMS\\win64\\27.1")
 #print(args)
 #quit(save="no")
 
@@ -118,16 +126,12 @@ if (is.na(gdx_file)) {
   gdx_file <- str_c(excel_base_path, ".gdx")
 }
 
-# Use given GAMS system directory to find csv2gdx and gdxmerge binaries, or default to on-path
-csv2gdx <- "csv2gdx"
-gdxmerge <- "gdxmerge"
-if (!is.na(options["sysdir"])) {
-  sep = ""
-  if (!(str_sub(options["sysdir"], -1) %in% c("/", "\\"))) {
-    sep = "/"
+# Use given GAMS system directory to load the GDX libraries for gdxrrw
+sys_dir <- options["sysdir"]
+if (!is.na(sys_dir)) {
+  if (!igdx(gamsSysDir=sys_dir, silent=TRUE)) {
+    stop(str_glue("Cannot load GDX libraries from provided sysdir {sys_dir}"))
   }
-  csv2gdx <- str_c(options["sysdir"], csv2gdx, sep=sep)
-  gdxmerge <- str_c(options["sysdir"], gdxmerge, sep=sep)
 }
 
 # Check any provided range
@@ -163,23 +167,23 @@ if (typeof(col_names) != "character") {
   stop("Extracted column names are not character strings!")
 }
 if (any(Encoding(col_names) == "UTF-8")) {
-  stop(str_c("Special characters in column names not supported: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
+  stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
 }
 
-# Project latin special characters to ASCII (unlike iconv(), stri_trans_general() is platform-agnostic)
+# Project latin special characters in non-value columns to ASCII.
+# Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
 for (r in 1:rdim) {
   if (typeof(tib[[r]]) == "character") {
     uniq <- unique(tib[[r]])
     if (any(Encoding(uniq) == "UTF-8")) {
       uniq_proj <- stri_trans_general(uniq, "latin-ascii")
       if (any(Encoding(uniq_proj) == "UTF-8")) {
-        # Presumably some non-latin special characters are present that could not be projected
+        # Non-latin special characters are present that can not be projected.
         stop(str_c("Cannot project special characters: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
-      } else {
-        warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
-        proj <- stri_trans_general(tib[[r]], "latin-ascii")
-        tib[[r]] <- proj
       }
+      warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
+      proj <- stri_trans_general(tib[[r]], "latin-ascii")
+      tib[[r]] <- proj
     }
   }
 }
