@@ -8,17 +8,13 @@
 # https://www.gams.com/latest/docs/T_GDXXRW.html
 #
 # Requirements:
-# gdxrrw: https://www.gams.com/latest/docs/T_GDXRRW.html
+# gdxrrw R package: https://www.gams.com/latest/docs/T_GDXRRW.html
 # tidyverse R package collection: https://www.tidyverse.org/
 #
 # BEWARE, on Windows installing the gdxrrw source package will not work unless
 # you have a compiler installed, install a binary package instead. Binary
 # packages are provided for specific operating systems and R versions,
 # carefully select the appropriate package for download.
-# This script uses the GAMS CSV2GDX and GDXMERGE binaries to help peform
-# the conversion. These binaries are located in the GAMS system directory.
-# The GAMS system directory should either be part of your PATH environment
-# variable, or it can be specified via the sysdir= option.
 #
 # To locate the GDX libraries in the GAMS system directory, the path specified
 # via the sysdir option is used if provided. Otherwise, the R_GAMS_SYSDIR
@@ -40,12 +36,17 @@
 # what appears to be a locale-dependent encoding.
 #
 # Author: Albert Brouwer
+#
+# Todo:
+# - Set annotation to reflect Excel source file
+# - support set=
+# - support dSet=
 
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
 library(tidyverse)
-library(readxl) # is installed when you install tidyverse
-library(stringi) # is installed when you install tidyverse
+library(readxl) # installed when you install tidyverse
+library(stringi) # installed when you install tidyverse
 
 # ---- Parse arguments and options ----
 
@@ -55,7 +56,7 @@ USAGE <- str_c("Usage:",
               "Options:",
               "output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
               "sysdir=<GAMS system directory> (pass %gams.sysdir%)",
-              "rng='<sheet>!<start_colrow>:<stop_colrow>'",
+              "rng='<sheet>!<start_colrow>[:<end_colrow>]'",
               "par=<parameter to write>",
               "cdim=<number of column dimensions>",
               "rdim=<number of row dimensions>",
@@ -66,9 +67,9 @@ VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "cdim", "rdim", "index")
 
 #TODO: remove test code below
 #setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test1"))
-setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test2"))
-#args = c("test1.xls", "output=test1.gdx", "par=para", "rng=toUse!c4:f39", "rdim=1", "cdim=1")
-args = c("test2.xlsx", "output=test2.gdx", "par=para", "rng=CommodityBalancesCrops1!a1:bb65501", "rdim=7", "cdim=1", "sysdir=C:\\GAMS\\win64\\27.1")
+#setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test2"))
+#args = c("test.xls", "output=test.gdx", "par=para", "rng=toUse!c4:f39", "rdim=1", "cdim=1")
+#args = c("test.xlsx", "output=test.gdx", "par=para", "rng=CommodityBalancesCrops1!a1", "rdim=7", "cdim=1", "sysdir=C:\\GAMS\\win64\\27.1")
 #print(args)
 #quit(save="no")
 
@@ -138,8 +139,16 @@ if (!is.na(sys_dir)) {
 range = NULL
 if (!is.na(options["rng"])) {
   range <- options["rng"]
-  if (is.na(str_match(options["rng"], "^.+[!].+[:].+$"))) {
-    stop(str_glue("Invalid rng option: '{range}' format should be <sheet>!<start_colrow>:<end_colrow>!"))
+  if (is.na(str_match(range, "^.+[!][:alpha:]+[:digit:]+[:][:alpha:]+[:digit:]+$"))) {
+    # not a range with start and end col/row
+    ma <- str_match(range, "^(.+)[!]([:alpha:]+[:digit:]+)$")
+    if (any(is.na(ma))) {
+      # nor a range with only a start col/row
+      stop(str_glue("Invalid rng option!: '{range}' format should be <sheet>!<start_colrow>[:<end_colrow>]"))
+    }
+    # construct a cell_limits object with start col/row, sheet, but no end col/row (read until no more cols or rows)
+    range <- anchored(ma[3], c(NA,NA))
+    range$sheet <- ma[2]
   }
 }
 
@@ -158,7 +167,9 @@ if (cdim != 1) {stop("cdim != 1 not yet supported!")}
 
 # ---- Convert Excel content to GDX ----
 
-# Read Excel subset as a tibble, yields UTF-8 strings in case of special characters
+# Read Excel subset as a tibble
+# NOTE: yields UTF-8 strings in case of special characters
+# NOTE: trims leading and trailing whitespace
 tib <- read_excel(excel_file, range=range)
 
 # Check whether column names are valid
@@ -179,7 +190,7 @@ for (r in 1:rdim) {
       uniq_proj <- stri_trans_general(uniq, "latin-ascii")
       if (any(Encoding(uniq_proj) == "UTF-8")) {
         # Non-latin special characters are present that can not be projected.
-        stop(str_c("Cannot project special characters: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
+        stop(str_c("Cannot project special characters to ASCII: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
       }
       warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
       proj <- stri_trans_general(tib[[r]], "latin-ascii")
@@ -195,14 +206,13 @@ for (r in 1:rdim) {
 
 # Gather value columns
 g <- tib %>%
-     gather(col_names[(rdim+1):length(col_names)], key="type", value="value") %>%
-     filter(!is.na(value))
+     gather(col_names[(rdim+1):length(col_names)], key="type", value="value", na.rm=TRUE)
 
 # Factor type column
 g[["type"]] <- factor(g[["type"]])
 
 # Write to GDX
-attr(g, "symName") <- options["par"]
-attr(g, "domains") <- col_names[1:rdim]
+attr(g, "symName") <- options["par"] # Name the symbol
+#attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
 g
 wgdx.lst(gdx_file, list(g))
