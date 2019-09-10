@@ -50,6 +50,7 @@ library(gdxrrw)
 library(tidyverse)
 library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
+RESHAPE <- TRUE
 
 # ---- Parse arguments and options ----
 
@@ -71,7 +72,7 @@ USAGE <- str_c("Usage:",
 VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "set", "dset", "cdim", "rdim", "index")
 
 #TODO: remove test code below
-#setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test2"))
+#setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test1"))
 #args = c("test.xls", "output=test.gdx", "par=para", "rng=toUse!c4:f39", "rdim=1", "cdim=1")
 #args = c("test.xlsx", "output=test.gdx", "par=para", "rng=CommodityBalancesCrops1!a1", "rdim=7", "cdim=1", "sysdir=C:\\GAMS\\win64\\27.1")
 #args = c("test.xlsx", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2", "rdim=1")
@@ -197,9 +198,59 @@ if (!is.na(sys_dir)) {
   }
 }
 
-# ---- Convert Excel content to GDX parameter ----
+# ---- Start conversion ----
 
-if (!is.na(par)) {
+out_list <- list()
+
+# ---- par: convert Excel content to GDX parameter ----
+
+if (!is.na(par) && RESHAPE) {
+
+  if (is.na(cdim)) {stop("Missing cdim option, must be present when using the par option!")}  
+  if (is.na(rdim)) {stop("Missing rdim option, must be present when using the par option!")}  
+  if (cdim != 1) {stop("cdim != 1 not yet supported when using the par option!")}
+  
+  # Read Excel subset as a tibble
+  # NOTE: yields UTF-8 strings in case of special characters
+  # NOTE: trims leading and trailing whitespace
+  tib <- read_excel(excel_file, range=range)
+  
+  # Check whether column names are valid
+  col_names <- colnames(tib)
+  if (typeof(col_names) != "character") {
+    stop("Extracted column names are not character strings!")
+  }
+  if (any(Encoding(col_names) == "UTF-8")) {
+    stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
+  }
+  
+  # Project latin special characters in non-value columns to ASCII.
+  # Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
+  for (r in 1:rdim) {
+    if (typeof(tib[[r]]) == "character") {
+      uniq <- unique(tib[[r]])
+      if (any(Encoding(uniq) == "UTF-8")) {
+        uniq_proj <- stri_trans_general(uniq, "latin-ascii")
+        if (any(Encoding(uniq_proj) == "UTF-8")) {
+          # Non-latin special characters are present that can not be projected.
+          stop(str_c("Cannot project special characters to ASCII: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
+        }
+        warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
+        proj <- stri_trans_general(tib[[r]], "latin-ascii")
+        tib[[r]] <- proj
+      }
+    }
+  }
+
+  # Reshape to collect value columns and add to list of symbols to output
+  attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}")
+  lst <- wgdx.reshape(tib, rdim+1, symName=symbol, setsToo=FALSE)[[1]] %>% drop_na
+  out_list[[length(out_list)+1]] <- lst
+}
+
+# ---- par: convert Excel content to GDX parameter 2 ----
+
+if (!is.na(par) && !RESHAPE) {
 
   if (is.na(cdim)) {stop("Missing cdim option, must be present when using the par option!")}  
   if (is.na(rdim)) {stop("Missing rdim option, must be present when using the par option!")}  
@@ -249,16 +300,14 @@ if (!is.na(par)) {
   # Factor the keys gathered from the value column headers
   g$gathered_keys <- factor(g$gathered_keys)
 
-  # Write to GDX
+  # Add to output list
   #attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
   attr(g, "symName") <- symbol # Name the symbol
   attr(g, "ts") <- str_glue("Converted from {basename(excel_file)}")
-  g
-  wgdx.lst(gdx_file, list(g))
-
+  out_list[[length(out_list)+1]] <- g
 }
 
-# ---- Convert Excel content to GDX parameter ----
+# ---- dset: convert Excel content to GDX set ----
 
 if (!is.na(dset)) {
 
@@ -274,7 +323,7 @@ if (!is.na(dset)) {
 
   t <- tib[[1]] %>% sort %>% unique
 
-  # Write to GDX
+  # Add to output list
   l <- list(name=symbol,
             type='set',
             dim=1,
@@ -282,12 +331,9 @@ if (!is.na(dset)) {
             ts=str_glue("Converted from {basename(excel_file)}"),
             uels=c(list(c(t)))
             )
-  wgdx(gdx_file, l)
-
+  out_list[[length(out_list)+1]] <- l
 }
 
-# ---- Convert Excel content to GDX set ----
+# ---- Write the list of parameters and sets to the GDX output file ----
 
-if (!is.na(set)) {
-  stop("The set options is not yet supported!")
-}
+wgdx.lst(gdx_file, out_list)
