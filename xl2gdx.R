@@ -19,28 +19,31 @@
 # To locate the GDX libraries in the GAMS system directory, the path specified
 # via the sysdir option is used if provided. Otherwise, the R_GAMS_SYSDIR
 # environment variable is used if set. Otherwise the GDX libraries are loaded
-# via the system-specific library search mechanism (e.g. the PATH on Windows or
-# LD_LIBRARY_PATH on Linux). The GDX libraries are used via gdxrrw to write
-# the output GDX.
+# via the system-specific library search environment variable: PATH on Windows,
+# LD_LIBRARY_PATH on Linux, or DYLD_LIBRARY_PATH on macOS. The GDX libraries
+# are used via gdxrrw to write the output GDX.
 #
 # BEWARE, to guarantee that the written GDX files will load into the GAMS
 # version you are using, make sure that the GAMS system directory from which
 # the GDX libraries are loaded is not that of a newer GAMS version: the GDX
 # format can change between GAMS versions such that older GAMS versions cannot
-# load the new format,
+# load the new format.
 #
-# BEWARE, special characters in the Excel file are projected onto their
-# closest ASCII look-alikes so as to avoid later character encoding issues.
-# By limiting to ASCII, locale and platform dependencies are avoided.
-# This is UNLIKE GDXRRW which stores special characters to the GDX in
-# what appears to be a locale-dependent encoding.
+# BEWARE, leading and trailing whitespace in fields is trimmed and special
+# characters in the Excel file are projected onto their closest ASCII
+# look-alikes so as to avoid later character encoding issues. By limiting
+# to ASCII, locale and platform dependencies are avoided. This is UNLIKE
+# GDXRRW which stores special characters to the GDX in what appears to be a
+# locale-dependent encoding.
 #
 # Author: Albert Brouwer
 #
 # Todo:
+# - support multiple par= / dset=
 # - Set annotation to reflect Excel source file
 # - support set=
-# - support dSet=
+# - options file
+# - get options from an Excel sheet
 
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
@@ -57,19 +60,21 @@ USAGE <- str_c("Usage:",
               "output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
               "sysdir=<GAMS system directory> (pass %gams.sysdir%)",
               "rng='<sheet>!<start_colrow>[:<end_colrow>]'",
-              "par=<parameter to write>",
+              "par=<name of parameter to write>",
+              "set=<name of set to write>",
+              "dset=<name of domain set to write>",
               "cdim=<number of column dimensions>",
               "rdim=<number of row dimensions>",
               "index='<sheet>!<start_colrow>'",
               sep="\n")
 
-VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "cdim", "rdim", "index")
+VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "set", "dset", "cdim", "rdim", "index")
 
 #TODO: remove test code below
-#setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test1"))
 #setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test2"))
 #args = c("test.xls", "output=test.gdx", "par=para", "rng=toUse!c4:f39", "rdim=1", "cdim=1")
 #args = c("test.xlsx", "output=test.gdx", "par=para", "rng=CommodityBalancesCrops1!a1", "rdim=7", "cdim=1", "sysdir=C:\\GAMS\\win64\\27.1")
+#args = c("test.xlsx", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2", "rdim=1")
 #print(args)
 #quit(save="no")
 
@@ -127,13 +132,23 @@ if (is.na(gdx_file)) {
   gdx_file <- str_c(excel_base_path, ".gdx")
 }
 
-# Use given GAMS system directory to load the GDX libraries for gdxrrw
-sys_dir <- options["sysdir"]
-if (!is.na(sys_dir)) {
-  if (!igdx(gamsSysDir=sys_dir, silent=TRUE)) {
-    stop(str_glue("Cannot load GDX libraries from provided sysdir {sys_dir}"))
-  }
+# Check symbol definition: par, set or dset
+par = options["par"]
+set = options["set"]
+dset = options["dset"]
+symbol = NA
+if (!is.na(par)) {
+  symbol <- par
 }
+if (!is.na(set)) {
+  if (!is.na(symbol)) {stop("Only one of par=, set=, or dset= is allowed!")}
+  symbol <- dset
+}
+if (!is.na(dset)) {
+  if (!is.na(symbol)) {stop("Only one of par=, set=, or dset= is allowed!")}
+  symbol <- dset
+}
+if (is.na(symbol)) {stop("No symbol definition option! One of par=, set=, or dset= is required.")}
 
 # Check any provided range
 range = NULL
@@ -149,70 +164,130 @@ if (!is.na(options["rng"])) {
     # construct a cell_limits object with start col/row, sheet, but no end col/row (read until no more cols or rows)
     range <- anchored(ma[3], c(NA,NA))
     range$sheet <- ma[2]
+  } else {
+    if (!is.na(dset)) {stop("No end col/row allowed in rng option when using the dset option!")}
+    if (!is.na(set))  {stop("No end col/row allowed in rng option when using the set option!")}
   }
 }
 
-# Check rdim and cdim
-if (is.na(options("rdim"))) {
-  stop("Missing rdim option!")
+# Check integer valuedness of any cdim or rdim
+cdim <- options["cdim"]
+if (!is.na(cdim))  {
+  cdim <- as.integer(cdim)
+  if (is.na(cdim)) {stop("Non-integer cdim option value!")}
 }
-rdim <- as.integer(options["rdim"])
-if (is.na(rdim)) {stop("rdim option value must be an integer")}
-if (is.na(options("cdim"))) {
-  stop("Missing cdim option!")
-}
-cdim <- as.integer(options["cdim"])
-if (is.na(cdim)) {stop("cdim option value must be an integer")}
-if (cdim != 1) {stop("cdim != 1 not yet supported!")}
-
-# ---- Convert Excel content to GDX ----
-
-# Read Excel subset as a tibble
-# NOTE: yields UTF-8 strings in case of special characters
-# NOTE: trims leading and trailing whitespace
-tib <- read_excel(excel_file, range=range)
-
-# Check whether column names are valid
-col_names <- colnames(tib)
-if (typeof(col_names) != "character") {
-  stop("Extracted column names are not character strings!")
-}
-if (any(Encoding(col_names) == "UTF-8")) {
-  stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
+rdim <- options["rdim"]
+if (!is.na(rdim))  {
+  rdim <- as.integer(rdim)
+  if (is.na(rdim)) {stop("Non-integer rdim option value!")}
 }
 
-# Project latin special characters in non-value columns to ASCII.
-# Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
-for (r in 1:rdim) {
-  if (typeof(tib[[r]]) == "character") {
-    uniq <- unique(tib[[r]])
-    if (any(Encoding(uniq) == "UTF-8")) {
-      uniq_proj <- stri_trans_general(uniq, "latin-ascii")
-      if (any(Encoding(uniq_proj) == "UTF-8")) {
-        # Non-latin special characters are present that can not be projected.
-        stop(str_c("Cannot project special characters to ASCII: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
+# ---- Make sure the GDX libraries are loaded ----
+
+sys_dir <- options["sysdir"]
+if (!is.na(sys_dir)) {
+  # Use GAMS system directory passed via sysdir to load the GDX libraries for gdxrrw
+  if (!igdx(gamsSysDir=sys_dir, silent=TRUE)) {
+    stop(str_glue("Cannot load GDX libraries from provided sysdir {sys_dir}"))
+  }
+} else {
+  # Use GAMS system directory passed via PATH/[DY]LD_LIBARRY_PATH/R_GAMS_SYSDIR to load the GDX libraries for gdxrrw
+  if (!igdx(gamsSysDir="", silent=TRUE)) {
+    stop("Cannot load GDX libraries! Use the sysdir option or set the GAMS system directory in your PATH (Windows), LD_LIBRARY_PATH (Linux), DYLD_LIBRARY_PATH (macOS) or R_GAMS_SYSDIR (all platforms) environment variable.")
+  }
+}
+
+# ---- Convert Excel content to GDX parameter ----
+
+if (!is.na(par)) {
+
+  if (is.na(cdim)) {stop("Missing cdim option, must be present when using the par option!")}  
+  if (is.na(rdim)) {stop("Missing rdim option, must be present when using the par option!")}  
+  if (cdim != 1) {stop("cdim != 1 not yet supported when using the par option!")}
+
+  # Read Excel subset as a tibble
+  # NOTE: yields UTF-8 strings in case of special characters
+  # NOTE: trims leading and trailing whitespace
+  tib <- read_excel(excel_file, range=range)
+  
+  # Check whether column names are valid
+  col_names <- colnames(tib)
+  if (typeof(col_names) != "character") {
+    stop("Extracted column names are not character strings!")
+  }
+  if (any(Encoding(col_names) == "UTF-8")) {
+    stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
+  }
+  
+  # Project latin special characters in non-value columns to ASCII.
+  # Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
+  for (r in 1:rdim) {
+    if (typeof(tib[[r]]) == "character") {
+      uniq <- unique(tib[[r]])
+      if (any(Encoding(uniq) == "UTF-8")) {
+        uniq_proj <- stri_trans_general(uniq, "latin-ascii")
+        if (any(Encoding(uniq_proj) == "UTF-8")) {
+          # Non-latin special characters are present that can not be projected.
+          stop(str_c("Cannot project special characters to ASCII: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
+        }
+        warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
+        proj <- stri_trans_general(tib[[r]], "latin-ascii")
+        tib[[r]] <- proj
       }
-      warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
-      proj <- stri_trans_general(tib[[r]], "latin-ascii")
-      tib[[r]] <- proj
     }
   }
+
+  # Factor non-value columns
+  for (r in 1:rdim) {
+    tib[[r]] <- factor(tib[[r]])
+  }
+
+  # Gather value-containing columns as a new pair of key-value columns
+  g <- tib %>%
+       gather(col_names[(rdim+1):length(col_names)], key="gathered_keys", value="gathered_values", na.rm=TRUE)
+
+  # Factor the keys gathered from the value column headers
+  g$gathered_keys <- factor(g$gathered_keys)
+
+  # Write to GDX
+  #attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
+  attr(g, "symName") <- symbol # Name the symbol
+  attr(g, "ts") <- str_glue("Converted from {basename(excel_file)}")
+  g
+  wgdx.lst(gdx_file, list(g))
+
 }
 
-# Factor non-value columns
-for (r in 1:rdim) {
-  tib[[r]] <- factor(tib[[r]])
+# ---- Convert Excel content to GDX parameter ----
+
+if (!is.na(dset)) {
+
+  if (!is.na(cdim)) {stop("A cdim option is not yet supported when using the dset option!")}  
+  if (is.na(rdim)) {stop("Missing rdim option, must be present when using the dset option!")}  
+  if (rdim != 1) {stop("Only cdim=1 is allowed when using the dset option!")}
+  range$lr <- c(NA, range$ul[[2]])
+
+  # Read Excel subset as a tibble
+  # NOTE: yields UTF-8 strings in case of special characters
+  # NOTE: trims leading and trailing whitespace
+  tib <- read_excel(excel_file, range=range, col_names=FALSE)
+
+  t <- tib[[1]] %>% sort %>% unique
+
+  # Write to GDX
+  l <- list(name=symbol,
+            type='set',
+            dim=1,
+            form="full",
+            ts=str_glue("Converted from {basename(excel_file)}"),
+            uels=c(list(c(t)))
+            )
+  wgdx(gdx_file, l)
+
 }
 
-# Gather value columns
-g <- tib %>%
-     gather(col_names[(rdim+1):length(col_names)], key="type", value="value", na.rm=TRUE)
+# ---- Convert Excel content to GDX set ----
 
-# Factor type column
-g[["type"]] <- factor(g[["type"]])
-
-# Write to GDX
-attr(g, "symName") <- options["par"] # Name the symbol
-#attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
-g
-wgdx.lst(gdx_file, list(g))
+if (!is.na(set)) {
+  stop("The set options is not yet supported!")
+}
