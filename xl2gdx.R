@@ -39,18 +39,21 @@
 # Author: Albert Brouwer
 #
 # Todo:
-# - support multiple par= / dset=
-# - Set annotation to reflect Excel source file
+# - test A1 conversions w/o sheet spec and w single sheet in XL
+# - support multiple par= / dset= (beware: rng/cdim/rdmim parsing must be pulled in-loop)
+# - Set annotation to reflect worksheet
 # - support set=
 # - options file
 # - get options from an Excel sheet
+# - Both reshape TRUE/FALSE write 100000/200000 as 1e+05 2e+05
 
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
 library(tidyverse)
+library(cellranger) # installed when you install tidyverse
 library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
-RESHAPE <- TRUE
+RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 
 # ---- Parse arguments and options ----
 
@@ -69,21 +72,19 @@ USAGE <- str_c("Usage:",
               "index='<sheet>!<start_colrow>'",
               sep="\n")
 
-VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "set", "dset", "cdim", "rdim", "index")
+VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "set", "dset", "cdim", "rdim", "index", "testdir")
 
-#TODO: remove test code below
-#setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/test1"))
-#args = c("test.xls", "output=test.gdx", "par=para", "rng=toUse!c4:f39", "rdim=1", "cdim=1")
-#args = c("test.xlsx", "output=test.gdx", "par=para", "rng=CommodityBalancesCrops1!a1", "rdim=7", "cdim=1", "sysdir=C:\\GAMS\\win64\\27.1")
-#args = c("test.xlsx", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2", "rdim=1")
-#print(args)
-#quit(save="no")
+# Uncomment to run tests from RStudio for debugging
+args = c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+#args = c("test.xlsx", "testdir=test2", "output=test.gdx", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "sysdir=C:\\GAMS\\win64\\27.1")
+#args = c("test.xlsx", "testdir=test3", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
+#args = c("test.xlsx", "testdir=test5", "output=test.gdx", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
 
 # Display usage if needed
 if (length(args) == 0) {
   stop(str_c("Missing arguments!", USAGE, sep="\n"))
 }
-if (args[1] == "?" || args[1] == "--help") {
+if (args[1] == "?" || args[1] == "-help" || args[1] == "--help") {
   cat(USAGE)
   quit(save="no")
 }
@@ -92,12 +93,11 @@ if (args[1] == "?" || args[1] == "--help") {
 OPTION_REGEX = "^([:alpha:]+)=(.*)$"
 option_matches = str_match(args, OPTION_REGEX)
 
-# Ensure that the first argument is the Excel file
+# Ensure that the first argument is an Excel file
 if (str_sub(args[1], 1, 1) == "@" || !is.na(option_matches[1, 1])) {
   stop("First argument must be an Excel file!")
 }
 excel_file = args[1]
-if (!(file.exists(excel_file))) {stop(str_glue("Excel file does not exist!: '{excel_file}'"))}
 excel_base_path <- str_match(excel_file, "^(.+)[.][xX][lL][sS][xX]?$")[2]
 if (is.na(excel_base_path)) {stop(str_glue("Not an Excel file: absent .xls or .xlsx extension in first argument '{excel_file}'!"))}
 
@@ -127,6 +127,15 @@ if (!is.na(options_file)) {
 # Stick the options into a dict-like for indexing by name
 options <- structure(option_matches[,3][!is.na(option_matches[,1])], names=str_to_lower(option_matches[,2][!is.na(option_matches[,1])]))
 
+# Change current directory when testing from RStudio
+if (!is.na(options["testdir"])) {
+  setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/", options["testdir"]))
+}
+
+# Make sure the Excel file exists
+if (!(file.exists(excel_file))) {stop(str_glue("Excel file does not exist!: '{excel_file}'"))}
+
+
 # Use given GDX output file, or set default
 gdx_file <- options["output"]
 if (is.na(gdx_file)) {
@@ -154,20 +163,26 @@ if (is.na(symbol)) {stop("No symbol definition option! One of par=, set=, or dse
 # Check any provided range
 range = NULL
 if (!is.na(options["rng"])) {
-  range <- options["rng"]
-  if (is.na(str_match(range, "^.+[!][:alpha:]+[:digit:]+[:][:alpha:]+[:digit:]+$"))) {
+  rng <- options["rng"]
+  ma <- str_match(rng, "^([^!]*)[!]?([:alpha:]+[:digit:]+[:][:alpha:]+[:digit:]+)$")
+  if (any(is.na(ma))) {
     # not a range with start and end col/row
-    ma <- str_match(range, "^(.+)[!]([:alpha:]+[:digit:]+)$")
+    ma <- str_match(rng, "^([^!]*)[!]?([:alpha:]+[:digit:]+)$")
     if (any(is.na(ma))) {
       # nor a range with only a start col/row
       stop(str_glue("Invalid rng option!: '{range}' format should be <sheet>!<start_colrow>[:<end_colrow>]"))
     }
     # construct a cell_limits object with start col/row, sheet, but no end col/row (read until no more cols or rows)
     range <- anchored(ma[3], c(NA,NA))
-    range$sheet <- ma[2]
   } else {
+    # a range with both a start and end col/row
     if (!is.na(dset)) {stop("No end col/row allowed in rng option when using the dset option!")}
     if (!is.na(set))  {stop("No end col/row allowed in rng option when using the set option!")}
+    # construct a cell_limits object with start col/row and end col/row
+    range <- as.cell_limits(ma[3])
+  }
+  if (ma[2] != "") {
+    range$sheet <- ma[2]
   }
 }
 
