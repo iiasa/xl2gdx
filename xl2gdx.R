@@ -39,13 +39,15 @@
 # Author: Albert Brouwer
 #
 # Todo:
+# W refactor to per-symbol argument parsing and iteration
 # - test A1 conversions w/o sheet spec and w single sheet in XL
-# - support multiple par= / dset= (beware: rng/cdim/rdmim parsing must be pulled in-loop)
 # - Set annotation to reflect worksheet
-# - support set=
-# - options file
-# - get options from an Excel sheet
+# - support index=, get options from an Excel sheet (one row per symbol, presumably)
+# - support @<options file> if 20-or-so uses not trivially converted
 # - Both reshape TRUE/FALSE write 100000/200000 as 1e+05 2e+05
+# - support the clear symbol attribute
+# - support set=
+# - support skipempty=0, at least in conjunction with index=
 
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
@@ -55,156 +57,289 @@ library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 
-# ---- Parse arguments and options ----
+# ---- Get command line arguments, or provide test arguments when running from RStudio ----
 
-args <- commandArgs(trailingOnly=TRUE)
+if (Sys.getenv("RSTUDIO") == "1") {
+  # Argument parsing fail test cases
+  #args <- c() # no arguments, error with usage
+  #args <- c("output=foo") # no Excel file as first argument
+  #args <- c("@options_file") # no Excel file as first argument
+  #args <- c("dummy.xls") # an xls, but no symbol.
+  #args <- c("dummy.xlsx") # an xlsx, but no symbol
+  #args <- c("dummy.xlsx", "invalid") # additional non-option argument that is not an options file
+  #args <- c("dummy.xlsx", "invalid", "@options_file", "@another_options_file") # additional non-option argument that is not an options file
+  #args <- c("dummy.xlsx", "@options_file", "output=foo") # options file is not the last argument
+  #args <- c("dummy.xlsx", "bad=option") # unknown option
+  #args <- c("dummy.xlsx", "par=foo", "output=bar") # symbol before option
+  #args <- c("dummy.xlsx", "output=foo", "par=bar", "sysdir=baz") # option after symbol
+  #args <- c("dummy.xlsx", "cdim=1") # symbol attribute without symbol
+  #args <- c("dummy.xlsx", "cdim=1", "par=foo") # attribute without preceding symbol
+  #args <- c("dummy.xlsx", "par=bar") # only symbol without attributes
+  #args <- c("dummy.xlsx", "dset=foo", "par=bar", "rdim=1") # first symbol without attributes
+  #args <- c("dummy.xlsx", "par=foo", "rng=A1", "rng=B2") # symbol with multiple attributes of the same type
+  #args <- c("dummy.xlsx", "par=foo", "rng=invalid") # invalid range
+  #args <- c("dummy.xlsx", "dset=foo", "rng=bar!A1:B2") # no end col/row allowed for a dset
+  #args <- c("dummy.xlsx", "set=foo", "rng=bar!A1:B2") # no end col/row allowed for a set
+  #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=invalid") # non-integer cdim
+  args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
+  
+  # Conversion tests
+  #args <- c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+  #args <- c("test.xlsx", "testdir=test2", "output=test.gdx", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
+  #args <- c("test.xlsx", "testdir=test3", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
+  #args <- c("test.xlsx", "testdir=test5", "output=test.gdx", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
+} else {
+  args <- commandArgs(trailingOnly=TRUE)
+}
+
+# ---- Display usage if needed ----
+
 USAGE <- str_c("Usage:",
-              "Rscript xl2gdx.R <Excel file> [options] [@<options file>]",
-              "Options:",
-              "output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
-              "sysdir=<GAMS system directory> (pass %gams.sysdir%)",
-              "rng='<sheet>!<start_colrow>[:<end_colrow>]'",
-              "par=<name of parameter to write>",
-              "set=<name of set to write>",
-              "dset=<name of domain set to write>",
-              "cdim=<number of column dimensions>",
-              "rdim=<number of row dimensions>",
-              "index='<sheet>!<start_colrow>'",
+              "Rscript xl2gdx.R <Excel file> [options] [@<options file>] [symbols]",
+              "Global options (provide these first):",
+              "    output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
+              "    index='<sheet>!<start_colrow>'",
+              "    sysdir=<GAMS system directory> (pass %gams.sysdir%)",
+              "Symbol options (one or more):",
+              "    dset=<name of domain set to write>",
+              "    par=<name of parameter to write>",
+              "    set=<name of set to write>",
+              "Symbol attribute options (associated with preceeding symbol):",
+              "    cdim=<number of column dimensions>",
+              "    rdim=<number of row dimensions>",
+              "    rng='[<sheet>!]<start_colrow>[:<end_colrow>]'",
               sep="\n")
 
-VALID_OPTIONS <- c("output", "sysdir", "rng", "par", "set", "dset", "cdim", "rdim", "index", "testdir")
-
-# Uncomment to run tests from RStudio for debugging
-args = c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-#args = c("test.xlsx", "testdir=test2", "output=test.gdx", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "sysdir=C:\\GAMS\\win64\\27.1")
-#args = c("test.xlsx", "testdir=test3", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
-#args = c("test.xlsx", "testdir=test5", "output=test.gdx", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
-
-# Display usage if needed
+# No arguments? Error with usage.
 if (length(args) == 0) {
-  stop(str_c("Missing arguments!", USAGE, sep="\n"))
+  stop(str_c("No arguments!", USAGE, sep="\n"))
 }
+
+# Display usage if requested
 if (args[1] == "?" || args[1] == "-help" || args[1] == "--help") {
   cat(USAGE)
   quit(save="no")
 }
 
-# Match option arguments
-OPTION_REGEX = "^([:alpha:]+)=(.*)$"
-option_matches = str_match(args, OPTION_REGEX)
+# ---- Preliminary parse and check of command line arguments ----
+
+# Match (keyword=value) options and get their names and values
+option_matches <- str_match(args, "^([:alpha:]+)=(.*)$")
+onames <- option_matches[,2][!is.na(option_matches[,1])]
+values <- option_matches[,3][!is.na(option_matches[,1])]
+
+# Stick the preliminary options (without options file or index sheet) into a dictionary
+if (length(onames) > 0) {
+  preliminary_options <- structure(values, names=onames)
+} else {
+  preliminary_options <- structure(vector())
+}
+rm(onames)
+rm(values)
 
 # Ensure that the first argument is an Excel file
-if (str_sub(args[1], 1, 1) == "@" || !is.na(option_matches[1, 1])) {
+if (str_sub(args[[1]], 1, 1) == "@" || !is.na(option_matches[[1, 1]])) {
   stop("First argument must be an Excel file!")
 }
-excel_file = args[1]
+excel_file <- args[[1]]
 excel_base_path <- str_match(excel_file, "^(.+)[.][xX][lL][sS][xX]?$")[2]
 if (is.na(excel_base_path)) {stop(str_glue("Not an Excel file: absent .xls or .xlsx extension in first argument '{excel_file}'!"))}
 
-# Determine whether an options file has been specified, and that remaining arguments are valid options
+# Determine whether an options file has been specified and is the last argument
 options_file <- NA
 if (length(args) > 1) {
   for (i in 2:length(args)) {
-    if (is.na(option_matches[i, 1])) {
-      # not an option argument
-      if (is.na(options_file) && str_sub(args[i], 1, 1) == "@") {
-        options_file <- str_sub(args[i], 2)
-        next
-      }
-      stop(str_glue("Invalid argument: '{args[i]}'!"))
-    } else {
-      # is the option argument valid?
-      if (!(str_to_lower(option_matches[i, 2]) %in% VALID_OPTIONS)) {
-        stop(str_glue("Unknown option: '{args[i]}'!"))
+    if (is.na(option_matches[[i, 1]])) {
+      # not an option argument, must be the options file
+      if (str_sub(args[[i]], 1, 1) == "@") {
+        if (is.na(options_file)) {
+          options_file <- str_sub(args[[i]], 2)
+          if (i != length(args)) {
+            stop(str_glue("Invalid argument: '{args[[i]]}'! An options file must be the last argument."))
+          }
+        }
+      } else {
+        stop(str_glue("Invalid argument: '{args[[i]]}'!"))
       }
     }
   }
 }
-if (!is.na(options_file)) {
-  if (!(file.exists(options_file))) {stop(str_glue("Options file does not exist!: '@{options_file}'"))}
-}
-
-# Stick the options into a dict-like for indexing by name
-options <- structure(option_matches[,3][!is.na(option_matches[,1])], names=str_to_lower(option_matches[,2][!is.na(option_matches[,1])]))
+rm(option_matches)
 
 # Change current directory when testing from RStudio
-if (!is.na(options["testdir"])) {
-  setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/", options["testdir"]))
+if (!is.na(preliminary_options["testdir"])) {
+  setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/", preliminary_options["testdir"]))
 }
 
-# Make sure the Excel file exists
-if (!(file.exists(excel_file))) {stop(str_glue("Excel file does not exist!: '{excel_file}'"))}
+# Make sure the Excel file exists, unless it is a dummy test argument
+if (excel_file != "dummy.xls" && excel_file != "dummy.xlsx") {
+  if (!(file.exists(excel_file))) {stop(str_glue("Excel file does not exist!: '{excel_file}'"))}
+}
 
+# Make sure that any specified options file exists.
+if (!is.na(options_file)) {
+  if (!(file.exists(options_file))) {stop(str_glue("Options file does not exist!: '@{options_file}'"))}
+  stop(str_glue("An options file argument was provided but is not yet supported!"))
+}
 
 # Use given GDX output file, or set default
-gdx_file <- options["output"]
+gdx_file <- preliminary_options["output"]
 if (is.na(gdx_file)) {
   gdx_file <- str_c(excel_base_path, ".gdx")
 }
 
-# Check symbol definition: par, set or dset
-par = options["par"]
-set = options["set"]
-dset = options["dset"]
-symbol = NA
-if (!is.na(par)) {
-  symbol <- par
-}
-if (!is.na(set)) {
-  if (!is.na(symbol)) {stop("Only one of par=, set=, or dset= is allowed!")}
-  symbol <- dset
-}
-if (!is.na(dset)) {
-  if (!is.na(symbol)) {stop("Only one of par=, set=, or dset= is allowed!")}
-  symbol <- dset
-}
-if (is.na(symbol)) {stop("No symbol definition option! One of par=, set=, or dset= is required.")}
+# ---- Expand options from file or sheet ----
 
-# Check any provided range
-range = NULL
-if (!is.na(options["rng"])) {
-  rng <- options["rng"]
-  ma <- str_match(rng, "^([^!]*)[!]?([:alpha:]+[:digit:]+[:][:alpha:]+[:digit:]+)$")
-  if (any(is.na(ma))) {
-    # not a range with start and end col/row
-    ma <- str_match(rng, "^([^!]*)[!]?([:alpha:]+[:digit:]+)$")
-    if (any(is.na(ma))) {
-      # nor a range with only a start col/row
-      stop(str_glue("Invalid rng option!: '{range}' format should be <sheet>!<start_colrow>[:<end_colrow>]"))
+#TODO: loading the options file goes here
+
+#TODO: index= handling goes here
+
+# ---- Parse and check expanded options  ----
+
+# Again match possibly expanded (keyword=value) options and get their names and values
+option_matches <- str_match(args, "^([:alpha:]+)=(.*)$")
+onames <- option_matches[,2][!is.na(option_matches[,1])]
+values <- option_matches[,3][!is.na(option_matches[,1])]
+
+# Define options classes
+PUBLIC_GLOBAL_OPTIONS <- c("index", "output", "sysdir")
+GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir")
+SYMBOL_OPTIONS <- c("dset", "par", "set")
+SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng")
+ALL_OPTIONS <- c(GLOBAL_OPTIONS, SYMBOL_OPTIONS, SYMBOL_ATTRIBUTE_OPTIONS)
+
+# Check that all option names are valid
+for (oname in onames) {
+  if (!(str_to_lower(oname) %in% ALL_OPTIONS)) {
+    stop(str_glue("Invalid option: '{args[[i]]}'!"))
+  }
+}
+
+# Classify option names and assert that the classes do not intersect and cover all keywords
+is_global           <- onames %in% GLOBAL_OPTIONS
+is_symbol           <- onames %in% SYMBOL_OPTIONS
+is_symbol_attribute <- onames %in% SYMBOL_ATTRIBUTE_OPTIONS
+stopifnot(!any(is_global & is_symbol))
+stopifnot(!any(is_global & is_symbol_attribute))
+stopifnot(!any(is_symbol & is_symbol_attribute))
+stopifnot(all(is_global | is_symbol | is_symbol_attribute))
+
+# Check that any global options precede symbol and symbol attribute options
+last_global_index <- 0
+if (length(onames) > 0) {
+  is_global_rl <- rle(is_global)
+  if ((any(is_global) && !is_global_rl$values[[1]]) || length(is_global_rl$values) > 2) {
+    stop(str_glue("Invalid order of options! Global options must precede any symbol or symbol attribute options."))
+  }
+  if (any(is_global)) {
+    last_global_index <- is_global_rl$lengths[[1]]
+  }
+}
+
+# Stick the global option names and values into a dictionary
+if (length(onames) > 0) {
+  global_options <- structure(values[1:last_global_index], names=onames[1:last_global_index])
+} else {
+  global_options <- structure(vector())
+}
+
+# Check symbol options and their attributes and store them as per-symbol dictionaries
+symbol_dicts = list()
+symbol_dict <- NULL
+i <- last_global_index+1
+while (i <= length(onames)) {
+  if (is_symbol[[i]]) {
+    # Handle any dictionary from prior symbol
+    if (!is.null(symbol_dict)) {
+      # Check that dictionary of prior symbol has attributes
+      if (!have_attributes) {
+        stop(str_glue("Symbol option {symbol_dict[['type']]}={symbol_dict[['name']]} has no symbol attributes!"))
+      }
+      # Store the dictionary of the prior symbol
+      symbol_dicts[[length(symbol_dicts) + 1]] <- symbol_dict
     }
-    # construct a cell_limits object with start col/row, sheet, but no end col/row (read until no more cols or rows)
-    range <- anchored(ma[3], c(NA,NA))
+    # Start a new symbol dictionary
+    symbol_dict <- structure(values[[i]], names="name")
+    symbol_dict[["type"]] <- onames[[i]]
+    has_attributes <- FALSE
   } else {
-    # a range with both a start and end col/row
-    if (!is.na(dset)) {stop("No end col/row allowed in rng option when using the dset option!")}
-    if (!is.na(set))  {stop("No end col/row allowed in rng option when using the set option!")}
-    # construct a cell_limits object with start col/row and end col/row
-    range <- as.cell_limits(ma[3])
+    # Check that there is a prior symbol to which the attribute belongs
+    if (is.null(symbol_dict)) {
+      stop(str_glue("Invalid position of option {onames[[i]]}={values[[i]]}! Symbol attribute options must follow a symbol option."))
+    }
+    # Check that the attribute is the first of its kind for the symbol
+    if (!is.na(symbol_dict[onames[[i]]])) {
+      stop(str_glue("Multiple {onames[[i]]} attributes for symbol option {symbol_dict[['type']]}={symbol_dict[['name']]}!"))
+    }
+    # Stick the attribute into the symbol dictionary
+    symbol_dict[[onames[i]]] <- values[[i]]
+    has_attributes <- TRUE
   }
-  if (ma[2] != "") {
-    range$sheet <- ma[2]
+  i <- i + 1
+}
+# Handle dictionary of last symbol, if any
+if (!is.null(symbol_dict)) {
+  # Check that symbol dictionary has attributes
+  if (!has_attributes) {
+    stop(str_glue("Symbol option {symbol_dict[['type']]}={symbol_dict[['name']]} has no symbol attributes!"))
+  }
+  # Store the dictionary of the last symbol
+  symbol_dicts[[length(symbol_dicts) + 1]] <- symbol_dict
+}
+
+# Fail when there are no symbol options with which to perform the conversion
+if (length(symbol_dicts) == 0) {
+  stop("No symbol options, cannot perform conversion!")
+}
+
+# Check rng symbol attributes and convert to cell_limits objects
+for (symbol_dict in symbol_dicts) {
+  if (!is.na(symbol_dict["rng"])) {
+    ma <- str_match(symbol_dict["rng"], "^([^!]*)[!]?([:alpha:]+[:digit:]+[:][:alpha:]+[:digit:]+)$")
+    if (any(is.na(ma))) {
+      # not a range with start and end col/row
+      ma <- str_match(symbol_dict["rng"], "^([^!]*)[!]?([:alpha:]+[:digit:]+)$")
+      if (any(is.na(ma))) {
+        # nor a range with only a start col/row
+        stop(str_glue("Invalid rng option for symbol {symbol_dict['name']}. Format should be [<sheet>!]<start_colrow>[:<end_colrow>]."))
+      }
+      # construct a cell_limits object with start col/row, sheet, but no end col/row (read until no more cols or rows)
+      cl <- anchored(ma[3], c(NA,NA))
+    } else {
+      # a range with both a start and end col/row
+      if (symbol_dict["type"] == "dset") {stop(str_glue("No end col/row allowed in rng option for dset symbol {symbol_dict['name']}!"))}
+      if (symbol_dict["type"] == "set")  {stop(str_glue("No end col/row allowed in rng option for dset symbol {symbol_dict['name']}!"))}
+      # construct a cell_limits object with start col/row and end col/row
+      cl <- as.cell_limits(ma[3])
+    }
+    if (ma[2] != "") {
+      range$sheet <- ma[2]
+    }
+    suppressWarnings(symbol_dict$rng <- cl)
   }
 }
 
-# Check integer valuedness of any cdim or rdim
-cdim <- options["cdim"]
-if (!is.na(cdim))  {
-  cdim <- as.integer(cdim)
-  if (is.na(cdim)) {stop("Non-integer cdim option value!")}
-}
-rdim <- options["rdim"]
-if (!is.na(rdim))  {
-  rdim <- as.integer(rdim)
-  if (is.na(rdim)) {stop("Non-integer rdim option value!")}
+# Check integer valuedness of cdim and rdim symbol attributes
+for (symbol_dict in symbol_dicts) {
+  cdim <- symbol_dict["cdim"]
+  if (!is.na(cdim))  {
+    suppressWarnings(cdim <- as.integer(cdim))
+    if (is.na(cdim)) {stop("Non-integer cdim option value for symbol {symbol_dict['name']}!")}
+  }
+  rdim <- symbol_dict["rdim"]
+  if (!is.na(rdim))  {
+    suppressWarnings(rdim <- as.integer(rdim))
+    if (is.na(rdim)) {stop("Non-integer rdim option value for symbol {symbol_dict['name']}!")}
+  }
 }
 
 # ---- Make sure the GDX libraries are loaded ----
 
-sys_dir <- options["sysdir"]
-if (!is.na(sys_dir)) {
+sysdir <- global_options["sysdir"]
+if (!is.na(sysdir)) {
   # Use GAMS system directory passed via sysdir to load the GDX libraries for gdxrrw
-  if (!igdx(gamsSysDir=sys_dir, silent=TRUE)) {
-    stop(str_glue("Cannot load GDX libraries from provided sysdir {sys_dir}"))
+  if (!igdx(gamsSysDir=sysdir, silent=TRUE)) {
+    stop(str_glue("Cannot load GDX libraries from provided sysdir {sysdir}"))
   }
 } else {
   # Use GAMS system directory passed via PATH/[DY]LD_LIBARRY_PATH/R_GAMS_SYSDIR to load the GDX libraries for gdxrrw
