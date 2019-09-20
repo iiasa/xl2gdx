@@ -40,7 +40,6 @@
 #
 # Todo:
 # - test A1 conversions w/o sheet spec and w single sheet in XL
-# - Set annotation to reflect worksheet
 # - support index=, get options from an Excel sheet (one row per symbol, presumably)
 # - support @<options file> if 20-or-so uses not trivially converted
 # - Both reshape TRUE/FALSE write 100000/200000 as 1e+05 2e+05
@@ -83,9 +82,9 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
   
   # Conversion tests
-  args <- c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+  #args <- c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
   #args <- c("test.xlsx", "testdir=test2", "output=test.gdx", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
-  #args <- c("test.xlsx", "testdir=test3", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
+  args <- c("test.xlsx", "testdir=test3", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "output=test.gdx", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test5", "output=test.gdx", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
 } else {
@@ -415,7 +414,7 @@ for (symbol_dict in symbol_dicts) {
     }
   
     # Reshape to collect value columns and add to list of symbols to output
-    attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}")
+    attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
     lst <- wgdx.reshape(tib, rdim+1, symName=name, setsToo=FALSE)[[1]] %>% drop_na
     out_list[[length(out_list)+1]] <- lst
   }
@@ -475,7 +474,7 @@ for (symbol_dict in symbol_dicts) {
     # Add to output list
     #attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
     attr(g, "symName") <- name
-    attr(g, "ts") <- str_glue("Converted from {basename(excel_file)}")
+    attr(g, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
     out_list[[length(out_list)+1]] <- g
   }
   
@@ -500,7 +499,7 @@ for (symbol_dict in symbol_dicts) {
               type="set",
               dim=1,
               form="full",
-              ts=str_glue("Converted from {basename(excel_file)}"),
+              ts=str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}"),
               uels=c(list(c(t)))
               )
     out_list[[length(out_list)+1]] <- l
