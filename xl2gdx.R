@@ -83,10 +83,10 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
   
   # Conversion tests
-  #args <- c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+  args <- c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
   #args <- c("test.xlsx", "testdir=test2", "output=test.gdx", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
   #args <- c("test.xlsx", "testdir=test3", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
-   args <- c("test.xlsx", "testdir=test4", "output=test.gdx", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
+  #args <- c("test.xlsx", "testdir=test4", "output=test.gdx", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test5", "output=test.gdx", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
@@ -385,7 +385,7 @@ for (symbol_dict in symbol_dicts) {
     # Read Excel subset as a tibble
     # NOTE: yields UTF-8 strings in case of special characters
     # NOTE: trims leading and trailing whitespace
-    tib <- read_excel(excel_file, range=rng)
+    tib <- suppressMessages(read_excel(excel_file, range=rng))
     
     # Check whether column names are valid
     col_names <- colnames(tib)
@@ -431,7 +431,7 @@ for (symbol_dict in symbol_dicts) {
     # Read Excel subset as a tibble
     # NOTE: yields UTF-8 strings in case of special characters
     # NOTE: trims leading and trailing whitespace
-    tib <- read_excel(excel_file, range=rng)
+    tib <- suppressMessages(read_excel(excel_file, range=rng))
     
     # Check whether column names are valid
     col_names <- colnames(tib)
@@ -491,7 +491,7 @@ for (symbol_dict in symbol_dicts) {
     # Read Excel subset as a tibble
     # NOTE: yields UTF-8 strings in case of special characters
     # NOTE: trims leading and trailing whitespace
-    tib <- read_excel(excel_file, range=rng, col_names=FALSE)
+    tib <- suppressMessages(read_excel(excel_file, range=rng, col_names=FALSE))
   
     t <- tib[[1]] %>% sort %>% unique
   
