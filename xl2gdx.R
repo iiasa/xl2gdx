@@ -39,13 +39,10 @@
 # Author: Albert Brouwer
 #
 # Todo:
-# - test A1 conversions w/o sheet spec and w single sheet in XL
-# - support index=, get options from an Excel sheet (one row per symbol, presumably)
 # - Both reshape TRUE/FALSE write 100000/200000 as 1e+05 2e+05
 # - support the clear symbol attribute
 # - support set=
 # - support skipempty=0, at least in conjunction with index=
-# - combine RESHAPE TRUE/FALSE where possible
 # - add gdxxrw and gdxdiff to in-Rstudio conversion tests
 
 options(tidyverse.quiet=TRUE)
@@ -219,15 +216,33 @@ rm(excel_base_path)
 
 more_opts <- c()
 
-#TODO: index= handling goes here
+# Read options from any index sheet
 if ("index" %in% names(preliminary_options)) {
+  # Read the index sheet
   cl <- range2cell_limits(preliminary_options$index)
-  tib <- suppressMessages(read_excel("test.xls", range=cl))
-  rm (cl, tib)
+  tib <- suppressMessages(read_excel(excel_file, range=cl))
+  # Make sure the column headers are lower case
+  colnames(tib) <- str_to_lower(colnames(tib))
+  # Require five columns
+  col_count <- length(colnames(tib))
+  if (col_count != 5) {
+    stop(str_glue("Index sheet has {col_count} columns, expecting 5!"))
+  }
+  # Require  column names
+  if (!(all(colnames(tib) == c("...1", "...2", "...3", "rdim", "cdim")) || all(colnames(tib) == c("...1", "...2", "...3", "cdim", "rdim")))) {
+    stop(str_glue("Unexpected column names in index sheet. The only supported naming has the first three out of 5 columns unnamed, and the last two columns should be named 'rdim' and 'cdim'."))
+  }
+  # Turn the tibble rows into strings with key=value options and extract these as a character vector
+  tib <- tib %>% transmute(rows=str_glue("{.[[1]]}={.[[2]]} rng={.[[3]]} cdim={cdim} rdim={rdim}"))
+  rows <- as.character(tib$rows)
+  # Extract the options as strings and append them
+  index_opts <- as.character(str_split(str_c(rows, collapse=" "), "[:blank:]+", simplify=TRUE))
+  more_opts <- c(more_opts, index_opts)
+  # Cleanup
+  rm(cl, tib, col_count, rows, index_opts)
 }
 
 # Read any options file
-
 if (!is.na(options_file)) {
   of_conn <- file(options_file, open="rt")
   lines <- readLines(of_conn)
