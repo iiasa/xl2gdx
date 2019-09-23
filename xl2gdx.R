@@ -41,7 +41,6 @@
 # Todo:
 # - test A1 conversions w/o sheet spec and w single sheet in XL
 # - support index=, get options from an Excel sheet (one row per symbol, presumably)
-# - support @<options file> if 20-or-so uses not trivially converted
 # - Both reshape TRUE/FALSE write 100000/200000 as 1e+05 2e+05
 # - support the clear symbol attribute
 # - support set=
@@ -82,11 +81,12 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
   
   # Conversion tests
-  #args <- c("test.xls",  "testdir=test1", "output=test.gdx", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-  #args <- c("test.xlsx", "testdir=test2", "output=test.gdx", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
-  args <- c("test.xlsx", "testdir=test3", "output=test.gdx", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
-  #args <- c("test.xlsx", "testdir=test4", "output=test.gdx", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
-  #args <- c("test.xlsx", "testdir=test5", "output=test.gdx", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
+  #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
+  #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
+  #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
+  #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
+  args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -178,7 +178,6 @@ if (excel_file != "dummy.xls" && excel_file != "dummy.xlsx") {
 # Make sure that any specified options file exists.
 if (!is.na(options_file)) {
   if (!(file.exists(options_file))) {stop(str_glue("Options file does not exist!: '@{options_file}'"))}
-  stop(str_glue("An options file argument was provided but is not yet supported!"))
 }
 
 # Use given GDX output file, or set default
@@ -187,16 +186,26 @@ if ("output" %in% names(preliminary_options)) {
 } else {
   gdx_file <- str_c(excel_base_path, ".gdx")
 }
+rm(excel_base_path)
 
-# ---- Expand options from file or sheet ----
+# ---- Expand options from index sheet or options file ----
 
 more_opts <- c()
 
 #TODO: index= handling goes here
 
-#TODO: loading the options file goes here
+# Read any options file
 
-# ---- Parse and check expanded options  ----
+if (!is.na(options_file)) {
+  of_conn <- file(options_file, open="rt")
+  lines <- readLines(of_conn)
+  close(of_conn)
+  of_opts <- as.character(str_split(str_replace_all(trimws(str_c(lines, collapse=" ")), "[:blank:]*=[:blank:]*", "="), "[:blank:]+", simplify=TRUE))
+  more_opts <- c(more_opts, of_opts)
+  rm(of_conn, of_opts)
+}
+
+# ---- Parse and check expanded arguments  ----
 
 # Match possibly expanded (keyword=value) options and get their names and values
 option_matches <- str_match(c(args, more_opts), "^([:alpha:]+)=(.*)$")
@@ -348,6 +357,9 @@ for (i in 1:length(symbol_dicts)) {
   # Return updated symbol dictionary to list
   symbol_dicts[[i]] <- symbol_dict
 }
+
+# Clean up from argument parsing
+rm(is_global, is_symbol, is_symbol_attribute, option_matches, onames, values)
 
 # ---- Make sure the GDX libraries are loaded ----
 
