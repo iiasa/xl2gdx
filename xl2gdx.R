@@ -46,6 +46,7 @@
 # - support set=
 # - support skipempty=0, at least in conjunction with index=
 # - combine RESHAPE TRUE/FALSE where possible
+# - add gdxxrw and gdxdiff to in-Rstudio conversion tests
 
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
@@ -53,7 +54,7 @@ library(tidyverse)
 library(cellranger) # installed when you install tidyverse
 library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
-RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
+RESHAPE <- FALSE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 
 # ---- Get command line arguments, or provide test arguments when running from RStudio ----
 
@@ -76,19 +77,19 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=bar") # only symbol without attributes
   #args <- c("dummy.xlsx", "dset=foo", "par=bar", "rdim=1") # first symbol without attributes
   #args <- c("dummy.xlsx", "par=foo", "rng=A1", "rng=B2") # symbol with multiple attributes of the same type
-  args <- c("dummy.xlsx", "par=foo", "rng=A1") # missing cdim attribute for par
+  #args <- c("dummy.xlsx", "par=foo", "rng=A1") # missing cdim attribute for par
   #args <- c("dummy.xlsx", "par=foo", "rng=A1", "cdim=1") # missing rdim attribute for par
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1") # missing rdim attribute for dset
   #args <- c("dummy.xlsx", "set=foo", "rng=bar!A1:B2") # no end col/row allowed for a set
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=invalid") # non-integer cdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
   
-  # Conversion tests
+  # Conversion tests (without gdxdiff)
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
   #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
-  #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
+  args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
   #args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
@@ -395,7 +396,7 @@ for (symbol_dict in symbol_dicts) {
 
   # ---- par: convert Excel content to GDX parameter via wgdx.reshape ----
   
-  if (type == "par" && RESHAPE) {
+  if (type == "par") {
   
     if (is.null(cdim)) {stop(str_glue("Missing cdim attribute for symbol {type}={name}"))}  
     if (is.null(rdim)) {stop(str_glue("Missing rdim attribute for symbol {type}={name}"))}  
@@ -432,78 +433,40 @@ for (symbol_dict in symbol_dicts) {
         }
       }
     }
-  
-    # Reshape to collect value columns and add to list of symbols to output
-    attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
-    lst <- wgdx.reshape(tib, rdim+1, symName=name, setsToo=FALSE)[[1]] %>% drop_na
-    out_list[[length(out_list)+1]] <- lst
-  }
-  
-  # ---- par: convert Excel content to GDX parameter via tibble fu ----
-  
-  if (type == "par" && !RESHAPE) {
-  
-    if (is.null(cdim)) {stop("Missing cdim option, must be present when using the par option!")}  
-    if (is.null(rdim)) {stop("Missing rdim option, must be present when using the par option!")}  
-    if (cdim != 1) {stop("cdim != 1 not yet supported when using the par option!")}
-  
-    # Read Excel subset as a tibble
-    # NOTE: yields UTF-8 strings in case of special characters
-    # NOTE: trims leading and trailing whitespace
-    tib <- suppressMessages(read_excel(excel_file, range=rng))
-    
-    # Check whether column names are valid
-    col_names <- colnames(tib)
-    if (typeof(col_names) != "character") {
-      stop("Extracted column names are not character strings!")
-    }
-    if (any(Encoding(col_names) == "UTF-8")) {
-      stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
-    }
-    
-    # Project latin special characters in non-value columns to ASCII.
-    # Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
-    for (r in 1:rdim) {
-      if (typeof(tib[[r]]) == "character") {
-        uniq <- unique(tib[[r]])
-        if (any(Encoding(uniq) == "UTF-8")) {
-          uniq_proj <- stri_trans_general(uniq, "latin-ascii")
-          if (any(Encoding(uniq_proj) == "UTF-8")) {
-            # Non-latin special characters are present that can not be projected.
-            stop(str_c("Cannot project special characters to ASCII: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
-          }
-          warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
-          proj <- stri_trans_general(tib[[r]], "latin-ascii")
-          tib[[r]] <- proj
-        }
+
+    # Use wgdx.reshape or dplyr-based parameter writing
+    if (RESHAPE) {
+      # Reshape to collect value columns and add to list of symbols to output
+      attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
+      lst <- wgdx.reshape(tib, rdim+1, symName=name, setsToo=FALSE)[[1]] %>% drop_na
+      out_list[[length(out_list)+1]] <- lst
+    } else {
+      # Factor non-value columns
+      for (r in 1:rdim) {
+        tib[[r]] <- factor(tib[[r]])
       }
+      
+      # Gather value-containing columns as a new pair of key-value columns
+      g <- tib %>%
+        gather(col_names[(rdim+1):length(col_names)], key="gathered_keys", value="gathered_values", na.rm=TRUE)
+      
+      # Factor the keys gathered from the value column headers
+      g$gathered_keys <- factor(g$gathered_keys)
+      
+      # Add to output list
+      #attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
+      attr(g, "symName") <- name
+      attr(g, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
+      out_list[[length(out_list)+1]] <- g
     }
-  
-    # Factor non-value columns
-    for (r in 1:rdim) {
-      tib[[r]] <- factor(tib[[r]])
-    }
-  
-    # Gather value-containing columns as a new pair of key-value columns
-    g <- tib %>%
-         gather(col_names[(rdim+1):length(col_names)], key="gathered_keys", value="gathered_values", na.rm=TRUE)
-  
-    # Factor the keys gathered from the value column headers
-    g$gathered_keys <- factor(g$gathered_keys)
-  
-    # Add to output list
-    #attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
-    attr(g, "symName") <- name
-    attr(g, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
-    out_list[[length(out_list)+1]] <- g
   }
-  
+
   # ---- dset: convert Excel content to GDX set ----
   
   if (type == "dset") {
   
     if (!is.null(cdim)) {stop("A cdim option is not yet supported when using the dset option!")}  
-    if (is.null(cdim)) {stop(str_glue("Missing cdim attribute for symbol {type}={name}"))}  
+    if (is.null(rdim)) {stop(str_glue("Missing rdim attribute for symbol {type}={name}"))}  
     if (rdim != 1) {stop("Only cdim=1 is allowed when using the dset option!")}
     rng$lr <- c(NA, rng$ul[[2]])
   
