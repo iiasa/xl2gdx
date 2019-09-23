@@ -45,6 +45,7 @@
 # - support the clear symbol attribute
 # - support set=
 # - support skipempty=0, at least in conjunction with index=
+# - combine RESHAPE TRUE/FALSE where possible
 
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
@@ -61,6 +62,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c() # no arguments, error with usage
   #args <- c("output=foo") # no Excel file as first argument
   #args <- c("@options_file") # no Excel file as first argument
+  #args <- c("does_not_exist.xls") # not-existent Excel file
   #args <- c("dummy.xls") # an xls, but no symbol.
   #args <- c("dummy.xlsx") # an xlsx, but no symbol
   #args <- c("dummy.xlsx", "invalid") # additional non-option argument that is not an options file
@@ -74,8 +76,9 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=bar") # only symbol without attributes
   #args <- c("dummy.xlsx", "dset=foo", "par=bar", "rdim=1") # first symbol without attributes
   #args <- c("dummy.xlsx", "par=foo", "rng=A1", "rng=B2") # symbol with multiple attributes of the same type
-  #args <- c("dummy.xlsx", "par=foo", "rng=invalid") # invalid range
-  #args <- c("dummy.xlsx", "dset=foo", "rng=bar!A1:B2") # no end col/row allowed for a dset
+  args <- c("dummy.xlsx", "par=foo", "rng=A1") # missing cdim attribute for par
+  #args <- c("dummy.xlsx", "par=foo", "rng=A1", "cdim=1") # missing rdim attribute for par
+  #args <- c("dummy.xlsx", "dset=foo", "rng=A1") # missing rdim attribute for dset
   #args <- c("dummy.xlsx", "set=foo", "rng=bar!A1:B2") # no end col/row allowed for a set
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=invalid") # non-integer cdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
@@ -86,7 +89,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
-  args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
+  #args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -120,11 +123,34 @@ if (args[1] == "?" || args[1] == "-help" || args[1] == "--help") {
   quit(save="no")
 }
 
+# ---- Define support functions ----
+
+# Convert Excel range string to a cell_limits object.
+range2cell_limits <- function(range) {
+  # The expected range format is: [<sheet>!]<start_colrow>[:<end_colrow>]
+  ma <- str_match(range, "^(?:([^!]+)[!])?([:alpha:]+[:digit:]+)(?:[:]([:alpha:]+[:digit:]+))?$")
+  if (is.na(ma[[1]])) {
+    stop(str_glue("Invalid Excel range '{range}'. Format should be [<sheet>!]<start_colrow>[:<end_colrow>]."))
+  }
+  if (!is.na(ma[[4]])) {
+    # A range with both a start and end col/row
+    cl <- as.cell_limits(range)
+  } else {
+    # A range without end col/row
+    cl <- anchored(ma[[3]], c(NA,NA))
+    if (!is.na(ma[[2]])) {
+      # Sheet name provided, add it
+      cl$sheet <- ma[[2]]
+    }
+  }
+  return(cl)
+}
+
 # ---- Preliminary parse and check of command line arguments ----
 
 # Match (keyword=value) options and get their names and values
 option_matches <- str_match(args, "^([:alpha:]+)=(.*)$")
-onames <- option_matches[,2][!is.na(option_matches[,1])]
+onames <- str_to_lower(option_matches[,2][!is.na(option_matches[,1])])
 values <- option_matches[,3][!is.na(option_matches[,1])]
 
 # Stick the preliminary options (without options file or index sheet) into a dictionary
@@ -193,6 +219,11 @@ rm(excel_base_path)
 more_opts <- c()
 
 #TODO: index= handling goes here
+if ("index" %in% names(preliminary_options)) {
+  cl <- range2cell_limits(preliminary_options$index)
+  tib <- suppressMessages(read_excel("test.xls", range=cl))
+  rm (cl, tib)
+}
 
 # Read any options file
 
@@ -209,7 +240,7 @@ if (!is.na(options_file)) {
 
 # Match possibly expanded (keyword=value) options and get their names and values
 option_matches <- str_match(c(args, more_opts), "^([:alpha:]+)=(.*)$")
-onames <- option_matches[,2][!is.na(option_matches[,1])]
+onames <- str_to_lower(option_matches[,2][!is.na(option_matches[,1])])
 values <- option_matches[,3][!is.na(option_matches[,1])]
 
 # Define options classes
@@ -220,10 +251,8 @@ SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng")
 ALL_OPTIONS <- c(GLOBAL_OPTIONS, SYMBOL_OPTIONS, SYMBOL_ATTRIBUTE_OPTIONS)
 
 # Check that all option names are valid
-for (oname in onames) {
-  if (!(str_to_lower(oname) %in% ALL_OPTIONS)) {
-    stop(str_glue("Invalid option: '{args[[i]]}'!"))
-  }
+if (!all(onames %in% ALL_OPTIONS)) {
+  stop(str_glue("Invalid option: '{args[[i]]}'!"))
 }
 
 # Classify option names and assert that the classes do not intersect and cover all keywords
@@ -307,29 +336,8 @@ for (i in 1:length(symbol_dicts)) {
   if ("rng" %in% names(symbol_dict)) {
     # Retrieve symbol dictionary from list
     symbol_dict <- symbol_dicts[[i]]
-
     # Convert the range string to cell_limits
-    ma <- str_match(symbol_dict$rng, "^([^!]*)[!]?([:alpha:]+[:digit:]+[:][:alpha:]+[:digit:]+)$")
-    if (any(is.na(ma))) {
-      # Not a range with start and end col/row
-      ma <- str_match(symbol_dict$rng, "^([^!]*)[!]?([:alpha:]+[:digit:]+)$")
-      if (any(is.na(ma))) {
-        # Nor a range with only a start col/row
-        stop(str_glue("Invalid rng option for symbol {symbol_dict$name}. Format should be [<sheet>!]<start_colrow>[:<end_colrow>]."))
-      }
-      # Construct a cell_limits object with start col/row, sheet, but no end col/row (read until no more cols or rows)
-      cl <- anchored(ma[[3]], c(NA,NA))
-      if (ma[[2]] != "") {
-        cl$sheet <- ma[[2]]
-      }
-    } else {
-      # a range with both a start and end col/row
-      if (symbol_dict$type == "dset") {stop(str_glue("No end col/row allowed in rng option for dset symbol {symbol_dict$name}!"))}
-      if (symbol_dict$type == "set")  {stop(str_glue("No end col/row allowed in rng option for dset symbol {symbol_dict$name}!"))}
-      # construct a cell_limits object with sheet, start col/row and end col/row
-      cl <- as.cell_limits(ma[[1]])
-    }
-
+    cl <- range2cell_limits(symbol_dict$rng)
     # Update symbol dictionary and return it to list
     suppressWarnings(symbol_dict$rng <- cl)
     symbol_dicts[[i]] <- symbol_dict
@@ -389,8 +397,8 @@ for (symbol_dict in symbol_dicts) {
   
   if (type == "par" && RESHAPE) {
   
-    if (is.null(cdim)) {stop("Missing cdim option, must be present when using the par option!")}  
-    if (is.null(rdim)) {stop("Missing rdim option, must be present when using the par option!")}  
+    if (is.null(cdim)) {stop(str_glue("Missing cdim attribute for symbol {type}={name}"))}  
+    if (is.null(rdim)) {stop(str_glue("Missing rdim attribute for symbol {type}={name}"))}  
     if (cdim != 1) {stop("cdim != 1 not yet supported when using the par option!")}
     
     # Read Excel subset as a tibble
@@ -495,7 +503,7 @@ for (symbol_dict in symbol_dicts) {
   if (type == "dset") {
   
     if (!is.null(cdim)) {stop("A cdim option is not yet supported when using the dset option!")}  
-    if (is.null(rdim)) {stop("Missing rdim option, must be present when using the dset option!")}  
+    if (is.null(cdim)) {stop(str_glue("Missing cdim attribute for symbol {type}={name}"))}  
     if (rdim != 1) {stop("Only cdim=1 is allowed when using the dset option!")}
     rng$lr <- c(NA, rng$ul[[2]])
   
