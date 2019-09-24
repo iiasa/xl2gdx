@@ -1,7 +1,7 @@
 # Convert Excel to GDX
 #
 # This can replace GDXXRW for Excel-to-GDX conversion and accepts the same
-# arguments and a subset of the options that GDXXRW does, Unlike GDXXRW,
+# arguments and a subset of the options that GDXXRW does. Unlike GDXXRW,
 # this script Works on non-Windows platforms and does not require Office.
 #
 # For further information, see the GDXXRW documentation at:
@@ -39,19 +39,18 @@
 # Author: Albert Brouwer
 #
 # Todo:
-# - Both reshape TRUE/FALSE write 100000/200000 as 1e+05 2e+05
 # - support the clear symbol attribute
 # - support set=
 # - support skipempty=0, at least in conjunction with index=
-# - add gdxxrw and gdxdiff to in-Rstudio conversion tests
 
+options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
 library(gdxrrw)
 library(tidyverse)
 library(cellranger) # installed when you install tidyverse
 library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
-RESHAPE <- FALSE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
+RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 
 # ---- Get command line arguments, or provide test arguments when running from RStudio ----
 
@@ -81,15 +80,15 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=invalid") # non-integer cdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
   
-  # Conversion tests (without gdxdiff)
+  # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
   #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
-  #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
+  args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
   #args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
   #args <- c("test.xls",  "testdir=test7", "index=Index!B4")
-  args <- c("test.xls",  "testdir=test8", "index=INDEX!B4")
+  #args <- c("test.xls",  "testdir=test8", "index=INDEX!B4")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -506,4 +505,6 @@ for (symbol_dict in symbol_dicts) {
   }
 
 }
+
+# Write the symbols
 wgdx.lst(gdx_file, out_list)
