@@ -29,19 +29,13 @@
 # format can change between GAMS versions such that older GAMS versions cannot
 # load the new format.
 #
-# BEWARE, leading and trailing whitespace in fields is trimmed and special
-# characters in the Excel file are projected onto their closest ASCII
-# look-alikes so as to avoid later character encoding issues. By limiting
-# to ASCII, locale and platform dependencies are avoided. This is UNLIKE
-# GDXRRW which stores special characters to the GDX in what appears to be a
-# locale-dependent encoding.
+# BEWARE, leading and trailing whitespace in Excel fields is trimmed.
 #
 # Author: Albert Brouwer
 #
 # Todo:
-# - support the clear symbol attribute
-# - support set=
-# - support skipempty=0, at least in conjunction with index=
+# - support set=?
+# - support ASCII projection for headers and dsets?
 
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
@@ -73,19 +67,22 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=bar") # only symbol without attributes
   #args <- c("dummy.xlsx", "dset=foo", "par=bar", "rdim=1") # first symbol without attributes
   #args <- c("dummy.xlsx", "par=foo", "rng=A1", "rng=B2") # symbol with multiple attributes of the same type
+  #args <- c("dummy.xlsx", "par=foo", "rng=invalid") # symbol with an invalid rng
   #args <- c("dummy.xlsx", "par=foo", "rng=A1") # missing cdim attribute for par
   #args <- c("dummy.xlsx", "par=foo", "rng=A1", "cdim=1") # missing rdim attribute for par
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1") # missing rdim attribute for dset
   #args <- c("dummy.xlsx", "set=foo", "rng=bar!A1:B2") # no end col/row allowed for a set
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=invalid") # non-integer cdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
+  #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=1", "rdim=1", "project=invalid") # invalid value for project
+  #args <- c("dummy.xlsx", "dset=foo", "rng=A1", "rdim=1", "project=Y") # project only supported for par
   
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7")
+  args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N")
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
-  args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
+  #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
   #args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
   #args <- c("test.xls",  "testdir=test7", "index=Index!B4")
   #args <- c("test.xls",  "testdir=test8", "index=INDEX!B4")
@@ -109,6 +106,7 @@ USAGE <- str_c("Usage:",
               "    cdim=<number of column dimensions>",
               "    rdim=<number of row dimensions>",
               "    rng='[<sheet>!]<start_colrow>[:<end_colrow>]'",
+              "    project=Y (project latin special characters to ASCII for par symbols, e.g. ô->o, defaults to N)",
               sep="\n")
 
 # No arguments? Error with usage.
@@ -264,7 +262,7 @@ values <- option_matches[,3][!is.na(option_matches[,1])]
 PUBLIC_GLOBAL_OPTIONS <- c("index", "output", "sysdir")
 GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir")
 SYMBOL_OPTIONS <- c("dset", "par", "set")
-SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng")
+SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng", "project")
 ALL_OPTIONS <- c(GLOBAL_OPTIONS, SYMBOL_OPTIONS, SYMBOL_ATTRIBUTE_OPTIONS)
 
 # Check that all option names are valid
@@ -350,9 +348,9 @@ if (length(symbol_dicts) == 0) {
 
 # Check rng symbol attributes and convert to cell_limits objects
 for (i in 1:length(symbol_dicts)) {
+  # Retrieve symbol dictionary from list
+  symbol_dict <- symbol_dicts[[i]]
   if ("rng" %in% names(symbol_dict)) {
-    # Retrieve symbol dictionary from list
-    symbol_dict <- symbol_dicts[[i]]
     # Convert the range string to cell_limits
     cl <- range2cell_limits(symbol_dict$rng)
     # Update symbol dictionary and return it to list
@@ -383,6 +381,20 @@ for (i in 1:length(symbol_dicts)) {
   symbol_dicts[[i]] <- symbol_dict
 }
 
+# Check project symbol attributes
+for (i in 1:length(symbol_dicts)) {
+  # Retrieve symbol dictionary from list
+  symbol_dict <- symbol_dicts[[i]]
+  if ("project" %in% names(symbol_dict)) {
+    if (symbol_dict$type != "par") {
+      stop(str_glue("Project option not supported for symbol {symbol_dict$type}={symbol_dict$name}: only supported for par symbols!"))
+    }
+    if (!(symbol_dict$project %in% c('Y', 'N'))) {
+      stop(str_glue("Invalid project option value '{symbol_dict$project}' for symbol {symbol_dict$name}!"))
+    }
+  }
+}
+
 # Clean up from argument parsing
 rm(is_global, is_symbol, is_symbol_attribute, option_matches, onames, values)
 
@@ -404,11 +416,12 @@ if ("sysdir" %in% names(global_options)) {
 
 out_list <- list()
 for (symbol_dict in symbol_dicts) {
-  name <- symbol_dict$name
-  type <- symbol_dict$type
-  rng  <- symbol_dict$rng
-  cdim <- symbol_dict$cdim
-  rdim <- symbol_dict$rdim
+  name    <- symbol_dict$name
+  type    <- symbol_dict$type
+  rng     <- symbol_dict$rng
+  cdim    <- symbol_dict$cdim
+  rdim    <- symbol_dict$rdim
+  project <- symbol_dict$project
 
   # ---- par: convert Excel content to GDX parameter via wgdx.reshape ----
   
@@ -438,14 +451,24 @@ for (symbol_dict in symbol_dicts) {
       if (typeof(tib[[r]]) == "character") {
         uniq <- unique(tib[[r]])
         if (any(Encoding(uniq) == "UTF-8")) {
-          uniq_proj <- stri_trans_general(uniq, "latin-ascii")
-          if (any(Encoding(uniq_proj) == "UTF-8")) {
-            # Non-latin special characters are present that can not be projected.
-            stop(str_c("Cannot project special characters to ASCII: ", str_c(unipro[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
+          if (!is.null(project) && project == 'Y') {
+            # Project to ASCII
+            uniq_proj <- stri_trans_general(uniq, "Latin-ASCII")
+            if (any(Encoding(uniq_proj) == "UTF-8")) {
+              stop(str_c("Cannot project special characters to ASCII: ", str_c(uniq_proj[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
+            }
+            warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
+            proj <- stri_trans_general(tib[[r]], "Latin-ASCII")
+            tib[[r]] <- proj
+          } else {
+            # Represent as Windows-1252 (latin code page)
+            uniq_rep <- stri_encode(uniq, from="UTF-8", to="Windows-1252")
+            if (any(Encoding(uniq_rep) == "UTF-8")) {
+              stop(str_c("Cannot represent special characters with Windows-1252: ", str_c(uniq_rep[Encoding(uniq_rep) == "UTF-8"], collapse=", "), collapse=""))
+            }
+            rep <- stri_encode(tib[[r]], from="UTF-8", to="Windows-1252")
+            tib[[r]] <- rep
           }
-          warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
-          proj <- stri_trans_general(tib[[r]], "latin-ascii")
-          tib[[r]] <- proj
         }
       }
     }
