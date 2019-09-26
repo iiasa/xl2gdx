@@ -36,6 +36,11 @@
 # Todo:
 # - support set=?
 # - support ASCII projection for headers and dsets?
+# - Add output like:
+#   GDXXRW           28.1.0 r5b48834 Released Aug 02, 2019 VS8 x86 32bit/MS Window
+#   Input file : C:\work\GLOBIOM\GLOBIOM_FABLE\Data\LiveFAO\tablesFAO_2009april\ConsumptionLiveStock.xls
+#   Output file: C:\work\GLOBIOM\GLOBIOM_FABLE\Data\LiveFAO\ConsumptionLiveStock.gdx
+#   Total time = 4828 Ms
 
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
@@ -86,7 +91,8 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
   #args <- c("test.xls",  "testdir=test7", "index=Index!B4")
   #args <- c("test.xls",  "testdir=test8", "index=INDEX!B4")
-  args <- c("test.xlsx", "testdir=test9", "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
+  #args <- c("test.xlsx", "testdir=test9", "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
+  args <- c("test.xls", "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -514,6 +520,29 @@ for (symbol_dict in symbol_dicts) {
         # Factor the keys gathered from the value column headers
         tib$gathered_keys <- factor(tib$gathered_keys)
       }
+    }
+
+    # Work around Excel having converted number-alike strings to binary floating point representation, thereby introducing
+    # rounding errors of fractional decimal values that cannot be represented exactly as a binary floating point number.
+    for (r in 1:rdim) {
+      lvls <- levels(tib[[r]])
+      if (typeof(lvls) == "character") {
+        ma <- str_match(lvls, "[.][:digit:]+[09]{8}[:digit:]")
+        if (!all(is.na(ma))) {
+          # Occurrences of >=8 consecutive 0s or 9s after a point, Excel mangling is likely, try to convert these to double
+          dbls <- suppressWarnings(as.double(lvls[!is.na(ma)]))
+          if (!all(is.na(dbls))) {
+            warning(str_glue("Fixing Excel mangling for symbol {type}={name} column {r}!"))
+            # Revert converted doubles to character strings, getting rid of binary rounding through decimal rounding
+            lvls[!is.na(ma)][!is.na(dbls)] <- as.character(dbls[!is.na(dbls)])
+            # Replace with fixed levels
+            levels(tib[[r]]) <- lvls
+          }
+          rm(dbls)
+        }
+        rm(ma)
+      }
+      rm(lvls)
     }
 
     # Annotate and add tibble to output list
