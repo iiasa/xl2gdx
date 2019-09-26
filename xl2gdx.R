@@ -79,13 +79,14 @@ if (Sys.getenv("RSTUDIO") == "1") {
   
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-  args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N")
+  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N")
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
   #args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
   #args <- c("test.xls",  "testdir=test7", "index=Index!B4")
   #args <- c("test.xls",  "testdir=test8", "index=INDEX!B4")
+  args <- c("test.xlsx", "testdir=test9", "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -435,7 +436,10 @@ for (symbol_dict in symbol_dicts) {
     # NOTE: yields UTF-8 strings in case of special characters
     # NOTE: trims leading and trailing whitespace
     tib <- suppressMessages(read_excel(excel_file, range=rng))
-    
+    if (length(tib) < rdim+1) {
+      stop(str_glue("Too few columns in Excel input of symbol {type}={name}, should be at least rdim+1 since there must be at least one value column!"))
+    }
+
     # Check whether column names are valid
     col_names <- colnames(tib)
     if (typeof(col_names) != "character") {
@@ -444,60 +448,78 @@ for (symbol_dict in symbol_dicts) {
     if (any(Encoding(col_names) == "UTF-8")) {
       stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
     }
+    col_named <- col_names != str_c("...", as.character(1:length(tib)))
+    if (length(tib) > rdim+1) {
+      # Multiple value columns
+      if (!all(col_named[(rdim+1):length(tib)])) {
+        stop(str_glue("Excel input of symbol {type}={name} has multiple value columns ({rdim+1}-{length(tib)}), but not all these columns have header names and as such cannot be gathered to a gdx dimension!"))
+      }
+      if (length(unique(col_names[(rdim+1):length(tib)])) != length(tib)-rdim) {
+        stop(str_glue("Excel input of symbol {type}={name} has multiple value columns ({rdim+1}-{length(tib)}), but their header names are not unique as such cannot be gathered to a gdx dimension!"))
+      }
+    }
     
     # Project latin special characters in non-value columns to ASCII.
     # Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
     for (r in 1:rdim) {
       if (typeof(tib[[r]]) == "character") {
+        # A character column, for efficiency first collect the unique strings
         uniq <- unique(tib[[r]])
         if (any(Encoding(uniq) == "UTF-8")) {
           if (!is.null(project) && project == 'Y') {
-            # Project to ASCII
-            uniq_proj <- stri_trans_general(uniq, "Latin-ASCII")
-            if (any(Encoding(uniq_proj) == "UTF-8")) {
+            # Check that unique column strings can be projected to ASCII
+            if (any(Encoding(stri_trans_general(uniq, "Latin-ASCII")) == "UTF-8")) {
               stop(str_c("Cannot project special characters to ASCII: ", str_c(uniq_proj[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
             }
+            # Project column to ASCII
             warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
-            proj <- stri_trans_general(tib[[r]], "Latin-ASCII")
-            tib[[r]] <- proj
+            tib[[r]] <- stri_trans_general(tib[[r]], "Latin-ASCII")
           } else {
-            # Represent as Windows-1252 (latin code page)
-            uniq_rep <- stri_encode(uniq, from="UTF-8", to="Windows-1252")
-            if (any(Encoding(uniq_rep) == "UTF-8")) {
+            # Check that unique column strings can be respresented as Windows-1252 (latin code page)
+            if (any(Encoding(stri_encode(uniq, from="UTF-8", to="Windows-1252")) == "UTF-8")) {
               stop(str_c("Cannot represent special characters with Windows-1252: ", str_c(uniq_rep[Encoding(uniq_rep) == "UTF-8"], collapse=", "), collapse=""))
             }
-            rep <- stri_encode(tib[[r]], from="UTF-8", to="Windows-1252")
-            tib[[r]] <- rep
+            # Represent column as Windows-1252 (latin code page)
+            tib[[r]] <- stri_encode(tib[[r]], from="UTF-8", to="Windows-1252")
           }
         }
+        rm(uniq)
       }
     }
 
-    # Use wgdx.reshape or dplyr-based parameter writing
-    if (RESHAPE) {
-      # Reshape to collect value columns and add to list of symbols to output
-      attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
-      lst <- wgdx.reshape(tib, rdim+1, symName=name, setsToo=FALSE)[[1]] %>% drop_na
-      out_list[[length(out_list)+1]] <- lst
-    } else {
+    # Prepare tibble
+    if (length(tib) == rdim+1 && !col_named[[rdim+1]]) {
+      # A single unnamed value column, no gathering required
       # Factor non-value columns
       for (r in 1:rdim) {
         tib[[r]] <- factor(tib[[r]])
       }
-      
-      # Gather value-containing columns as a new pair of key-value columns
-      g <- tib %>%
-        gather(col_names[(rdim+1):length(col_names)], key="gathered_keys", value="gathered_values", na.rm=TRUE)
-      
-      # Factor the keys gathered from the value column headers
-      g$gathered_keys <- factor(g$gathered_keys)
-      
-      # Add to output list
-      #attr(g, "domains") <- col_names[1:rdim] # This sets the column names as domains
-      attr(g, "symName") <- name
-      attr(g, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
-      out_list[[length(out_list)+1]] <- g
+      # Drop rows with NA's
+      tib <- tib %>% drop_na()
+    } else {
+      # Gather value column or columns using wgdx.reshape or dplyr
+      if (RESHAPE) {
+        # Reshape to collect value columns and add to list of symbols to output, does its own factoring
+        tib <- wgdx.reshape(tib, rdim+1, symName=name, setsToo=FALSE)[[1]] %>% drop_na
+      } else {
+        # Factor non-value columns
+        for (r in 1:rdim) {
+          tib[[r]] <- factor(tib[[r]])
+        }
+        
+        # Gather value-containing columns as a new pair of key-value columns
+        tib <- tib %>%
+          gather(col_names[(rdim+1):length(col_names)], key="gathered_keys", value="gathered_values", na.rm=TRUE)
+        
+        # Factor the keys gathered from the value column headers
+        tib$gathered_keys <- factor(tib$gathered_keys)
+      }
     }
+
+    # Annotate and add tibble to output list
+    attr(tib, "symName") <- name
+    attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
+    out_list[[length(out_list)+1]] <- tib
   }
 
   # ---- dset: convert Excel content to GDX set ----
