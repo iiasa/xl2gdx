@@ -99,7 +99,8 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test9", "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
   #args <- c("test.xls", "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
   #args <- c("test.xls", "testdir=test11", "@taskin.txt")
-  args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
+  #args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
+  args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -455,6 +456,18 @@ for (symbol_dict in symbol_dicts) {
     if (cdim == 1) {
       tib <- suppressMessages(read_excel(excel_file, range=rng))
       col_names <- colnames(tib)
+      # Cut-off any columns as of first empty in-range column like GDXXRW does
+      for (col in 1:length(tib)) {
+        if (col_names[[col]] == str_c("...", col)) {
+          # Column has no name
+          if (all(is.na(tib[[col]]))) {
+            # Column has no values either, cut it and all columns to the right off
+            tib <- select(tib, -(col:length(tib)))
+            col_names <- colnames(tib)
+            break
+          }
+        }
+      }
     } else {
       stopifnot(cdim > 1)
       # Multiple column header rows, read them first
@@ -499,10 +512,10 @@ for (symbol_dict in symbol_dicts) {
     
     # Project latin special characters in non-value columns to ASCII.
     # Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
-    for (r in 1:rdim) {
-      if (typeof(tib[[r]]) == "character") {
+    for (col in 1:rdim) {
+      if (typeof(tib[[col]]) == "character") {
         # A character column, for efficiency first collect the unique strings
-        uniq <- unique(tib[[r]])
+        uniq <- unique(tib[[col]])
         if (any(Encoding(uniq) == "UTF-8")) {
           if (!is.null(project) && project == 'Y') {
             # Check that unique column strings can be projected to ASCII
@@ -512,7 +525,7 @@ for (symbol_dict in symbol_dicts) {
             }
             # Project column to ASCII
             warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
-            tib[[r]] <- stri_trans_general(tib[[r]], "Latin-ASCII")
+            tib[[col]] <- stri_trans_general(tib[[col]], "Latin-ASCII")
             rm(uniq_proj)
           } else {
             # Check that unique column strings can be respresented as Windows-1252 (latin code page)
@@ -521,7 +534,7 @@ for (symbol_dict in symbol_dicts) {
               stop(str_c("Cannot represent special characters with Windows-1252 (ASCII extended with latin code page): ", str_c(uniq_rep[Encoding(uniq_rep) == "UTF-8"], collapse=", "), collapse=""))
             }
             # Represent column as Windows-1252 (ASCII extended with latin code page)
-            tib[[r]] <- stri_encode(tib[[r]], from="UTF-8", to="Windows-1252")
+            tib[[col]] <- stri_encode(tib[[col]], from="UTF-8", to="Windows-1252")
             rm(uniq_rep)
           }
         }
@@ -549,25 +562,25 @@ for (symbol_dict in symbol_dicts) {
     }
 
     # Factor non-value columns where needed
-    for (r in 1:rdim) {
-      if (!is.factor(tib[[r]])) {tib[[r]] <- factor(tib[[r]])}
+    for (col in 1:rdim) {
+      if (!is.factor(tib[[col]])) {tib[[col]] <- factor(tib[[col]])}
     }
     
     # Work around Excel having converted number-alike strings to binary floating point representation, thereby introducing
     # rounding errors of fractional decimal values that cannot be represented exactly as a binary floating point number.
-    for (r in 1:rdim) {
-      lvls <- levels(tib[[r]])
+    for (col in 1:rdim) {
+      lvls <- levels(tib[[col]])
       if (typeof(lvls) == "character") {
         ma <- str_match(lvls, "[.][:digit:]+[09]{8}[:digit:]")
         if (!all(is.na(ma))) {
           # Occurrences of >=8 consecutive 0s or 9s after a point, Excel mangling is likely, try to convert these to double
           dbls <- suppressWarnings(as.double(lvls[!is.na(ma)]))
           if (!all(is.na(dbls))) {
-            warning(str_glue("Fixing Excel mangling for symbol {type}={name} column {r}."))
+            warning(str_glue("Fixing Excel mangling for symbol {type}={name} column {col}."))
             # Revert converted doubles to character strings, getting rid of binary rounding through decimal rounding
             lvls[!is.na(ma)][!is.na(dbls)] <- as.character(dbls[!is.na(dbls)])
             # Replace with fixed levels
-            levels(tib[[r]]) <- lvls
+            levels(tib[[col]]) <- lvls
           }
           rm(dbls)
         }
@@ -580,8 +593,8 @@ for (symbol_dict in symbol_dicts) {
       # Separate gathered column into separate columns, one for each column header row
       tib <- separate(tib, rdim+1, into=str_c("...", (rdim+1):(rdim+cdim)), sep="<#>")
       # Factor separated columns where needed
-      for (r in (rdim+1):(rdim+cdim)) {
-        if (!is.factor(tib[[r]])) {tib[[r]] <- factor(tib[[r]])}
+      for (col in (rdim+1):(rdim+cdim)) {
+        if (!is.factor(tib[[col]])) {tib[[col]] <- factor(tib[[col]])}
       }
     }
     
