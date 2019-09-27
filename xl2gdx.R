@@ -58,8 +58,9 @@ RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter wr
 if (Sys.getenv("RSTUDIO") == "1") {
   # Failing argument parsing test cases
   #args <- c() # no arguments, error with usage
-  #args <- c("output=foo") # no Excel file as first argument
-  #args <- c("@options_file") # no Excel file as first argument
+  #args <- c("output=foo") # first argument may not be an option
+  #args <- c("@options_file") # first argument may not be an options file
+  #args <- c("dummy.bad") # no Excel extension for first argument
   #args <- c("does_not_exist.xls") # not-existent Excel file
   #args <- c("dummy.xls") # an xls, but no symbol.
   #args <- c("dummy.xlsx") # an xlsx, but no symbol
@@ -100,7 +101,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xls", "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
   #args <- c("test.xls", "testdir=test11", "@taskin.txt")
   #args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
-  args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
+  #args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -174,13 +175,15 @@ if (length(onames) > 0) {
 rm(onames)
 rm(values)
 
-# Ensure that the first argument is an Excel file
+# Ensure that the first argument is a not an option nor an options file
 if (str_sub(args[[1]], 1, 1) == "@" || !is.na(option_matches[[1, 1]])) {
   stop("First argument must be an Excel file!")
 }
+
+# Check that the first argument has an Excel file extension
 excel_file <- args[[1]]
-excel_base_path <- str_match(excel_file, "^(.+)[.][xX][lL][sS][xX]?$")[2]
-if (is.na(excel_base_path)) {stop(str_glue("Not an Excel file: absent .xls or .xlsx extension in first argument '{excel_file}'!"))}
+extensionless_excel_name <- str_match(basename(excel_file), "^(.+)[.][xX][lL][sS][xX]?$")[2]
+if (is.na(extensionless_excel_name)) {stop(str_glue("Not an Excel file: absent .xls or .xlsx extension in first argument '{excel_file}'!"))}
 
 # Determine whether an options file has been specified and is the last argument
 options_file <- NA
@@ -222,9 +225,9 @@ if (!is.na(options_file)) {
 if ("output" %in% names(preliminary_options)) {
   gdx_file <- preliminary_options$output
 } else {
-  gdx_file <- str_c(excel_base_path, ".gdx")
+  gdx_file <- str_c(extensionless_excel_name, ".gdx")
 }
-rm(excel_base_path)
+rm(extensionless_excel_name)
 
 # ---- Expand options from index sheet or options file ----
 
