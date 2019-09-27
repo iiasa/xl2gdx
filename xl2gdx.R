@@ -79,12 +79,15 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "set=foo", "rng=bar!A1:B2") # no end col/row allowed for a set
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=invalid") # non-integer cdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
+  #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=0") # too small cdim
+  #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=0") # too small rdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=1", "rdim=1", "project=invalid") # invalid value for project
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1", "rdim=1", "project=Y") # project only supported for par
   
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N")
+  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
+  args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
@@ -92,7 +95,8 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xls",  "testdir=test7", "index=Index!B4")
   #args <- c("test.xls",  "testdir=test8", "index=INDEX!B4")
   #args <- c("test.xlsx", "testdir=test9", "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
-  args <- c("test.xls", "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
+  #args <- c("test.xls", "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
+  #args <- c("test.xls", "testdir=test11", "@taskin.txt")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -258,6 +262,8 @@ if (!is.na(options_file)) {
   rm(of_conn, of_opts)
 }
 
+rm(preliminary_options)
+
 # ---- Parse and check expanded arguments  ----
 
 # Match possibly expanded (keyword=value) options and get their names and values
@@ -374,14 +380,16 @@ for (i in 1:length(symbol_dicts)) {
   if ("cdim" %in% names(symbol_dict)) {
     cdim <- symbol_dict$cdim
     suppressWarnings(cdim <- as.integer(cdim))
-    if (is.na(cdim)) {stop("Non-integer cdim option value for symbol {symbol_dict$name}!")}
+    if (is.na(cdim)) {stop(str_glue("Non-integer cdim option value for symbol {symbol_dict$name}!"))}
+    if (cdim < 1) {stop(str_glue("Invalid cdim={cdim} option value for symbol {symbol_dict$name}!"))}
     symbol_dict$cdim <- cdim
   }
   # Coerce any rdim field to integer
   if ("rdim" %in% names(symbol_dict)) {
     rdim <- symbol_dict$rdim
     suppressWarnings(rdim <- as.integer(rdim))
-    if (is.na(rdim)) {stop("Non-integer rdim option value for symbol {symbol_dict$name}!")}
+    if (is.na(rdim)) {stop(str_glue("Non-integer rdim option value for symbol {symbol_dict$name}!"))}
+    if (rdim < 1) {stop(str_glue("Invalid rdim={rdim} option value for symbol {symbol_dict$name}!"))}
     symbol_dict$rdim <- rdim
   }
   # Return updated symbol dictionary to list
@@ -403,7 +411,7 @@ for (i in 1:length(symbol_dicts)) {
 }
 
 # Clean up from argument parsing
-rm(is_global, is_symbol, is_symbol_attribute, option_matches, onames, values)
+rm(is_global, is_symbol, is_symbol_attribute, last_global_index, option_matches, onames, symbol_dict, values)
 
 # ---- Make sure the GDX libraries are loaded ----
 
@@ -418,6 +426,7 @@ if ("sysdir" %in% names(global_options)) {
     stop("Cannot load GDX libraries! Use the sysdir option or set the GAMS system directory in your PATH (Windows), LD_LIBRARY_PATH (Linux), DYLD_LIBRARY_PATH (macOS) or R_GAMS_SYSDIR (all platforms) environment variable.")
   }
 }
+rm(global_options)
 
 # ---- Convert and write symbols ----
 
@@ -436,18 +445,34 @@ for (symbol_dict in symbol_dicts) {
   
     if (is.null(cdim)) {stop(str_glue("Missing cdim attribute for symbol {type}={name}"))}  
     if (is.null(rdim)) {stop(str_glue("Missing rdim attribute for symbol {type}={name}"))}  
-    if (cdim != 1) {stop("cdim != 1 not yet supported when using the par option!")}
-    
-    # Read Excel subset as a tibble
+
+    # Read Excel subset as a tibble, mergins multiple column header rows if needed
     # NOTE: yields UTF-8 strings in case of special characters
     # NOTE: trims leading and trailing whitespace
-    tib <- suppressMessages(read_excel(excel_file, range=rng))
+    if (cdim == 1) {
+      tib <- suppressMessages(read_excel(excel_file, range=rng))
+      col_names <- colnames(tib)
+    } else {
+      stopifnot(cdim > 1)
+      # Multiple column header rows, read them first
+      header_row_rng <- rng
+      header_row_rng$lr[[1]] <- rng$ul[[1]]+cdim-1
+      col_header_rows <- suppressMessages(read_excel(excel_file, col_names=FALSE, range=header_row_rng))
+      # Merge the rows with a <#> separator to column names
+      col_names <- apply(col_header_rows, 2, function(col) str_c(col, collapse="<#>"))
+      # Read the range without the header rows, instead setting the merged colulumn names
+      headerless_rng <- rng
+      headerless_rng$ul[[1]] <- rng$ul[[1]]+cdim
+      tib <- suppressMessages(read_excel(excel_file, col_names=col_names, range=headerless_rng))
+      rm(header_row_rng, col_header_rows, headerless_rng)
+    }
+
+    # Check that sufficient columns were read to satisfy rdim
     if (length(tib) < rdim+1) {
       stop(str_glue("Too few columns in Excel input of symbol {type}={name}, should be at least rdim+1 since there must be at least one value column!"))
     }
 
     # Check whether column names are valid
-    col_names <- colnames(tib)
     if (typeof(col_names) != "character") {
       stop("Extracted column names are not character strings!")
     }
@@ -474,19 +499,23 @@ for (symbol_dict in symbol_dicts) {
         if (any(Encoding(uniq) == "UTF-8")) {
           if (!is.null(project) && project == 'Y') {
             # Check that unique column strings can be projected to ASCII
-            if (any(Encoding(stri_trans_general(uniq, "Latin-ASCII")) == "UTF-8")) {
+            uniq_proj <- stri_trans_general(uniq, "Latin-ASCII")
+            if (any(Encoding(uniq_proj) == "UTF-8")) {
               stop(str_c("Cannot project special characters to ASCII: ", str_c(uniq_proj[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
             }
             # Project column to ASCII
             warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
             tib[[r]] <- stri_trans_general(tib[[r]], "Latin-ASCII")
+            rm(uniq_proj)
           } else {
             # Check that unique column strings can be respresented as Windows-1252 (latin code page)
-            if (any(Encoding(stri_encode(uniq, from="UTF-8", to="Windows-1252")) == "UTF-8")) {
-              stop(str_c("Cannot represent special characters with Windows-1252: ", str_c(uniq_rep[Encoding(uniq_rep) == "UTF-8"], collapse=", "), collapse=""))
+            uniq_rep <- stri_encode(uniq, from="UTF-8", to="Windows-1252")
+            if (any(Encoding(uniq_rep) == "UTF-8")) {
+              stop(str_c("Cannot represent special characters with Windows-1252 (ASCII extended with latin code page): ", str_c(uniq_rep[Encoding(uniq_rep) == "UTF-8"], collapse=", "), collapse=""))
             }
-            # Represent column as Windows-1252 (latin code page)
+            # Represent column as Windows-1252 (ASCII extended with latin code page)
             tib[[r]] <- stri_encode(tib[[r]], from="UTF-8", to="Windows-1252")
+            rm(uniq_rep)
           }
         }
         rm(uniq)
@@ -495,12 +524,7 @@ for (symbol_dict in symbol_dicts) {
 
     # Prepare tibble
     if (length(tib) == rdim+1 && !col_named[[rdim+1]]) {
-      # A single unnamed value column, no gathering required
-      # Factor non-value columns
-      for (r in 1:rdim) {
-        tib[[r]] <- factor(tib[[r]])
-      }
-      # Drop rows with NA's
+      # A single unnamed value column, no gathering required, only drop rows with NA's
       tib <- tib %>% drop_na()
     } else {
       # Gather value column or columns using wgdx.reshape or dplyr
@@ -508,11 +532,6 @@ for (symbol_dict in symbol_dicts) {
         # Reshape to collect value columns and add to list of symbols to output, does its own factoring
         tib <- wgdx.reshape(tib, rdim+1, symName=name, setsToo=FALSE)[[1]] %>% drop_na
       } else {
-        # Factor non-value columns
-        for (r in 1:rdim) {
-          tib[[r]] <- factor(tib[[r]])
-        }
-        
         # Gather value-containing columns as a new pair of key-value columns
         tib <- tib %>%
           gather(col_names[(rdim+1):length(col_names)], key="gathered_keys", value="gathered_values", na.rm=TRUE)
@@ -522,6 +541,11 @@ for (symbol_dict in symbol_dicts) {
       }
     }
 
+    # Factor non-value columns where needed
+    for (r in 1:rdim) {
+      if (!is.factor(tib[[r]])) {tib[[r]] <- factor(tib[[r]])}
+    }
+    
     # Work around Excel having converted number-alike strings to binary floating point representation, thereby introducing
     # rounding errors of fractional decimal values that cannot be represented exactly as a binary floating point number.
     for (r in 1:rdim) {
@@ -532,7 +556,7 @@ for (symbol_dict in symbol_dicts) {
           # Occurrences of >=8 consecutive 0s or 9s after a point, Excel mangling is likely, try to convert these to double
           dbls <- suppressWarnings(as.double(lvls[!is.na(ma)]))
           if (!all(is.na(dbls))) {
-            warning(str_glue("Fixing Excel mangling for symbol {type}={name} column {r}!"))
+            warning(str_glue("Fixing Excel mangling for symbol {type}={name} column {r}."))
             # Revert converted doubles to character strings, getting rid of binary rounding through decimal rounding
             lvls[!is.na(ma)][!is.na(dbls)] <- as.character(dbls[!is.na(dbls)])
             # Replace with fixed levels
@@ -545,10 +569,20 @@ for (symbol_dict in symbol_dicts) {
       rm(lvls)
     }
 
+    if (cdim > 1) {
+      # Separate gathered column into separate columns, one for each column header row
+      tib <- separate(tib, rdim+1, into=str_c("...", (rdim+1):(rdim+cdim)), sep="<#>")
+      # Factor separated columns where needed
+      for (r in (rdim+1):(rdim+cdim)) {
+        if (!is.factor(tib[[r]])) {tib[[r]] <- factor(tib[[r]])}
+      }
+    }
+    
     # Annotate and add tibble to output list
     attr(tib, "symName") <- name
     attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
     out_list[[length(out_list)+1]] <- tib
+    rm(tib)
   }
 
   # ---- dset: convert Excel content to GDX set ----
@@ -576,6 +610,7 @@ for (symbol_dict in symbol_dicts) {
               uels=c(list(c(t)))
               )
     out_list[[length(out_list)+1]] <- l
+    rm(tib, l)
   }
 
 }
