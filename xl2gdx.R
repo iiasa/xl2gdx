@@ -31,6 +31,8 @@
 #
 # BEWARE, leading and trailing whitespace in Excel fields is trimmed.
 #
+# BEWARE, unlike GDXXRW, sheets are selected case sensitively by name.
+#
 # Author: Albert Brouwer
 #
 # Todo:
@@ -87,7 +89,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
   #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
-  args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
+  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
@@ -97,6 +99,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test9", "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
   #args <- c("test.xls", "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
   #args <- c("test.xls", "testdir=test11", "@taskin.txt")
+  args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -463,6 +466,10 @@ for (symbol_dict in symbol_dicts) {
       # Read the range without the header rows, instead setting the merged colulumn names
       headerless_rng <- rng
       headerless_rng$ul[[1]] <- rng$ul[[1]]+cdim
+      if (is.na(rng$lr[[2]])) {
+        # Open-ended range of columns, make sure to read as many as extracted column names
+        headerless_rng$lr[[2]] <- rng$ul[[2]] + length(col_names) -1
+      }
       tib <- suppressMessages(read_excel(excel_file, col_names=col_names, range=headerless_rng))
       rm(header_row_rng, col_header_rows, headerless_rng)
     }
