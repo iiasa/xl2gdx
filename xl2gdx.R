@@ -64,6 +64,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("does_not_exist.xls") # not-existent Excel file
   #args <- c("dummy.xls") # an xls, but no symbol.
   #args <- c("dummy.xlsx") # an xlsx, but no symbol
+  #args <- c("dummy.xLsX") # an xlsx, but no symbol
   #args <- c("dummy.xlsx", "invalid") # additional non-option argument that is not an options file
   #args <- c("dummy.xlsx", "invalid", "@options_file", "@another_options_file") # additional non-option argument that is not an options file
   #args <- c("dummy.xlsx", "@options_file", "output=foo") # options file is not the last argument
@@ -102,6 +103,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xls", "testdir=test11", "@taskin.txt")
   #args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
   #args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
+  args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -457,7 +459,7 @@ for (symbol_dict in symbol_dicts) {
     # NOTE: yields UTF-8 strings in case of special characters
     # NOTE: trims leading and trailing whitespace
     if (cdim == 1) {
-      tib <- suppressMessages(read_excel(excel_file, range=rng))
+      tib <- suppressMessages(read_excel(excel_file, range=rng, guess_max=500000))
       col_names <- colnames(tib)
       # Cut-off any columns as of first empty in-range column like GDXXRW does
       for (col in 1:length(tib)) {
@@ -476,7 +478,7 @@ for (symbol_dict in symbol_dicts) {
       # Multiple column header rows, read them first
       header_row_rng <- rng
       header_row_rng$lr[[1]] <- rng$ul[[1]]+cdim-1
-      col_header_rows <- suppressMessages(read_excel(excel_file, col_names=FALSE, range=header_row_rng))
+      col_header_rows <- suppressMessages(read_excel(excel_file, col_names=FALSE, range=header_row_rng, guess_max=500000))
       # Merge the rows with a <#> separator to column names
       col_names <- apply(col_header_rows, 2, function(col) str_c(col, collapse="<#>"))
       # Read the range without the header rows, instead setting the merged colulumn names
