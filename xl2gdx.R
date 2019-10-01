@@ -1,15 +1,18 @@
+#!/usr/bin/env Rscript
 # Convert Excel to GDX
 #
 # This can replace GDXXRW for Excel-to-GDX conversion and accepts the same
 # arguments and a subset of the options that GDXXRW does. Unlike GDXXRW,
 # this script Works on non-Windows platforms and does not require Office.
 #
-# For further information, see the GDXXRW documentation at:
-# https://www.gams.com/latest/docs/T_GDXXRW.html
+# For further information, see the see the USAGE definition below and the
+# GDXXRW documentation at https://www.gams.com/latest/docs/T_GDXXRW.html
 #
 # Requirements:
-# gdxrrw R package: https://www.gams.com/latest/docs/T_GDXRRW.html
-# tidyverse R package collection: https://www.tidyverse.org/
+# - an R installation that is not too old: all test pass with R V3.5.1 and
+# V3.6.1
+# - gdxrrw R package: https://www.gams.com/latest/docs/T_GDXRRW.html
+# - tidyverse R package collection: https://www.tidyverse.org/
 #
 # BEWARE, on Windows installing the gdxrrw source package will not work unless
 # you have a compiler installed, install a binary package instead. Binary
@@ -111,7 +114,9 @@ if (Sys.getenv("RSTUDIO") == "1") {
 # ---- Display usage if needed ----
 
 USAGE <- str_c("Usage:",
-              "Rscript xl2gdx.R <Excel file> [options] [@<options file>] [symbols]",
+              "[Rscript ]xl2gdx.R <Excel file> [options] [@<options file>] [symbols]",
+              "Prefixing with Rscript is not necessary when invoking from a Linux/MacOS shell.",
+              "",
               "Global options (provide these first):",
               "    output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
               "    index='<sheet>!<start_colrow>'",
