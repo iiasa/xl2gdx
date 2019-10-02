@@ -5,16 +5,15 @@
 # arguments and a subset of the options that GDXXRW does. Unlike GDXXRW,
 # this script Works on non-Windows platforms and does not require Office.
 #
-# For further information, see the see the USAGE definition below and the
-# GDXXRW documentation at https://www.gams.com/latest/docs/T_GDXXRW.html
+# For further information, see the the USAGE definition below and the GDXXRW
+# documentation at https://www.gams.com/latest/docs/T_GDXXRW.html
 #
 # Requirements:
-# - an R installation that is not too old: all test pass with R V3.5.1 and
-# V3.6.1
+# - an R installation that is not too old: tests pass with R V3.5.1 and V3.6.1
 # - gdxrrw R package: https://www.gams.com/latest/docs/T_GDXRRW.html
 # - tidyverse R package collection: https://www.tidyverse.org/
 #
-# BEWARE, on Windows installing the gdxrrw source package will not work unless
+# NOTE, on Windows installing the gdxrrw source package will not work unless
 # you have a compiler installed, install a binary package instead. Binary
 # packages are provided for specific operating systems and R versions,
 # carefully select the appropriate package for download.
@@ -32,9 +31,7 @@
 # format can change between GAMS versions such that older GAMS versions cannot
 # load the new format.
 #
-# BEWARE, leading and trailing whitespace in Excel fields is trimmed.
-#
-# BEWARE, unlike GDXXRW, sheets names in rng attributes are case sensitive.
+# NOTE, unlike GDXXRW, sheet names in rng attributes are case sensitive.
 #
 # Author: Albert Brouwer
 #
@@ -48,6 +45,7 @@ VERSION <- "beta"
 DATE <- "2-Oct-2019"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
+TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
 
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
@@ -92,7 +90,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=0") # too small rdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=1", "rdim=1", "project=invalid") # invalid value for project
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1", "rdim=1", "project=Y") # project only supported for par
-  #args <- c("dummy.xlsx", "sysdir=invalid_directory", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
+  args <- c("dummy.xlsx", "sysdir=C:/work", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
   
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
@@ -110,6 +108,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
   #args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
   #args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
+  #args <- c("test.xlsx", "testdir=test15", "par=spacey", "rng=Sheet1!B2", "cdim=1", "rdim=2")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -225,7 +224,7 @@ if ("abstestdir" %in% names(preliminary_options)) {
 }
 
 # Check that any provided GAMS system directory exists
-sydir <- NA
+sysdir <- NA
 if ("sysdir" %in% names(preliminary_options)) {
   sysdir <- preliminary_options$sysdir
   # Strip any trailing / or \ since file.exists may not like it
@@ -484,11 +483,10 @@ for (symbol_dict in symbol_dicts) {
     if (is.null(cdim)) {stop(str_glue("Missing cdim attribute for symbol {type}={name}"))}  
     if (is.null(rdim)) {stop(str_glue("Missing rdim attribute for symbol {type}={name}"))}  
 
-    # Read Excel subset as a tibble, mergins multiple column header rows if needed
+    # Read Excel subset as a tibble, merging multiple column header rows if needed
     # NOTE: yields UTF-8 strings in case of special characters
-    # NOTE: trims leading and trailing whitespace
     if (cdim == 1) {
-      tib <- suppressMessages(read_excel(excel_file, range=rng, guess_max=GUESS_MAX))
+      tib <- suppressMessages(read_excel(excel_file, range=rng, guess_max=GUESS_MAX, trim_ws=TRIM_WS))
       col_names <- colnames(tib)
       # Cut-off any columns as of first empty in-range column like GDXXRW does
       for (col in 1:length(tib)) {
@@ -507,7 +505,7 @@ for (symbol_dict in symbol_dicts) {
       # Multiple column header rows, read them first
       header_row_rng <- rng
       header_row_rng$lr[[1]] <- rng$ul[[1]]+cdim-1
-      col_header_rows <- suppressMessages(read_excel(excel_file, col_names=FALSE, range=header_row_rng, guess_max=GUESS_MAX))
+      col_header_rows <- suppressMessages(read_excel(excel_file, col_names=FALSE, range=header_row_rng))
       # Merge the rows with a <#> separator to column names
       col_names <- apply(col_header_rows, 2, function(col) str_c(col, collapse="<#>"))
       # Read the range without the header rows, instead setting the merged colulumn names
@@ -517,7 +515,7 @@ for (symbol_dict in symbol_dicts) {
         # Open-ended range of columns, make sure to read as many as extracted column names
         headerless_rng$lr[[2]] <- rng$ul[[2]] + length(col_names) -1
       }
-      tib <- suppressMessages(read_excel(excel_file, col_names=col_names, range=headerless_rng))
+      tib <- suppressMessages(read_excel(excel_file, col_names=col_names, range=headerless_rng, guess_max=GUESS_MAX, trim_ws=TRIM_WS))
       rm(header_row_rng, col_header_rows, headerless_rng)
     }
 
