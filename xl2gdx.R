@@ -108,7 +108,8 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xls", "testdir=test11", "@taskin.txt")
   #args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
   #args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
-  args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
+  #args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
+  args <- c( "FoodDemandProjections.xls", "abstestdir=C:\\work\\GLOBIOM\\GLOBIOM_FABLE_xl2gdx\\Data\\CropsFAO", 'sysdir="C:\\GAMS\\win64\\28.2\\"', "index=Index!B4")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -215,9 +216,12 @@ if (length(args) > 1) {
 }
 rm(option_matches)
 
-# Change current directory when testing from RStudio
+# Change current directory for testing
 if ("testdir" %in% names(preliminary_options)) {
   setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/", preliminary_options$testdir))
+}
+if ("abstestdir" %in% names(preliminary_options)) {
+  setwd(preliminary_options$abstestdir)
 }
 
 # Make sure the Excel file exists, unless it is a dummy test argument
@@ -289,7 +293,7 @@ values <- option_matches[,3][!is.na(option_matches[,1])]
 
 # Define options classes
 PUBLIC_GLOBAL_OPTIONS <- c("index", "output", "sysdir")
-GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir")
+GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir", "abstestdir")
 SYMBOL_OPTIONS <- c("dset", "par", "set")
 SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng", "project")
 ALL_OPTIONS <- c(GLOBAL_OPTIONS, SYMBOL_OPTIONS, SYMBOL_ATTRIBUTE_OPTIONS)
@@ -447,8 +451,8 @@ rm(global_options)
 # ---- Convert and write symbols ----
 
 cat(str_glue("xl2gdx {VERSION}, {DATE}"), sep='\n')
-cat(str_glue("Input file : {normalizePath(excel_file)}"), sep='\n')
-cat(str_glue("Output file : {normalizePath(gdx_file)}"), sep='\n')
+cat(str_glue("Input file : {suppressWarnings(normalizePath(excel_file))}"), sep='\n')
+cat(str_glue("Output file : {suppressWarnings(normalizePath(gdx_file))}"), sep='\n')
 
 out_list <- list()
 for (symbol_dict in symbol_dicts) {
