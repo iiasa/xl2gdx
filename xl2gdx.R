@@ -45,7 +45,7 @@
 start_time <- Sys.time()
 
 VERSION <- "beta"
-DATE <- "1-Oct-2019"
+DATE <- "2-Oct-2019"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 
@@ -528,6 +528,7 @@ for (symbol_dict in symbol_dicts) {
     
     # Project latin special characters in non-value columns to ASCII.
     # Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
+    to_latin <- FALSE
     for (col in 1:rdim) {
       if (typeof(tib[[col]]) == "character") {
         # A character column, for efficiency first collect the unique strings
@@ -540,7 +541,7 @@ for (symbol_dict in symbol_dicts) {
               stop(str_c("Cannot project special characters to ASCII: ", str_c(uniq_proj[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
             }
             # Project column to ASCII
-            warning(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
+            message(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
             tib[[col]] <- stri_trans_general(tib[[col]], "Latin-ASCII")
             rm(uniq_proj)
           } else {
@@ -550,12 +551,16 @@ for (symbol_dict in symbol_dicts) {
               stop(str_c("Cannot represent special characters with Windows-1252 (ASCII extended with latin code page): ", str_c(uniq_rep[Encoding(uniq_rep) == "UTF-8"], collapse=", "), collapse=""))
             }
             # Represent column as Windows-1252 (ASCII extended with latin code page)
+            to_latin <- TRUE
             tib[[col]] <- stri_encode(tib[[col]], from="UTF-8", to="Windows-1252")
             rm(uniq_rep)
           }
         }
         rm(uniq)
       }
+    }
+    if (to_latin) {
+      cat(str_glue("Note: non-ASCII special characters are present for symbol {type}={name} in column {col}. These were represented as Windows-1252 (ASCII extended with a latin code page). Handling of such text is locale-sensitive. Consider to project this symbol to ASCII using project=Y so that you can use locale-insensitive pure-ASCII handling after loading the GDX."), sep='\n')
     }
 
     # Prepare tibble
