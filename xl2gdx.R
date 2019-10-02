@@ -92,6 +92,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=0") # too small rdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=1", "rdim=1", "project=invalid") # invalid value for project
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1", "rdim=1", "project=Y") # project only supported for par
+  #args <- c("dummy.xlsx", "sysdir=invalid_directory", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
   
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
@@ -109,7 +110,6 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
   #args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
   #args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
-  args <- c( "FoodDemandProjections.xls", "abstestdir=C:\\work\\GLOBIOM\\GLOBIOM_FABLE_xl2gdx\\Data\\CropsFAO", 'sysdir="C:\\GAMS\\win64\\28.2\\"', "index=Index!B4")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -224,10 +224,24 @@ if ("abstestdir" %in% names(preliminary_options)) {
   setwd(preliminary_options$abstestdir)
 }
 
+# Check that any provided GAMS system directory exists
+sydir <- NA
+if ("sysdir" %in% names(preliminary_options)) {
+  sysdir <- preliminary_options$sysdir
+  # Strip any trailing / or \ since file.exists may not like it
+  if (str_sub(sysdir, -1, -1) %in% c("/", "\\")) {
+    sysdir <- str_sub(sysdir, 1, -2)
+  }
+  if (!file.exists(sysdir)) {
+    stop(str_glue("Invalid sysdir= option value, {sysdir} does not exist!"))
+  }
+}
+   
 # Make sure the Excel file exists, unless it is a dummy test argument
 if (excel_file != "dummy.xls" && excel_file != "dummy.xlsx") {
   if (!(file.exists(excel_file))) {stop(str_glue("Excel file does not exist!: '{excel_file}'"))}
 }
+
 
 # Make sure that any specified options file exists.
 if (!is.na(options_file)) {
@@ -435,15 +449,15 @@ rm(is_global, is_symbol, is_symbol_attribute, last_global_index, option_matches,
 
 # ---- Make sure the GDX libraries are loaded ----
 
-if ("sysdir" %in% names(global_options)) {
-  # Use GAMS system directory passed via sysdir to load the GDX libraries for gdxrrw
-  if (!igdx(gamsSysDir=global_options$sysdir, silent=TRUE)) {
-    stop(str_glue("Cannot load GDX libraries from provided sysdir {global_options$sysdir}"))
-  }
-} else {
+if (is.na(sysdir)) {
   # Use GAMS system directory passed via PATH/[DY]LD_LIBARRY_PATH/R_GAMS_SYSDIR to load the GDX libraries for gdxrrw
   if (!igdx(gamsSysDir="", silent=TRUE)) {
     stop("Cannot load GDX libraries! Use the sysdir option or set the GAMS system directory in your PATH (Windows), LD_LIBRARY_PATH (Linux), DYLD_LIBRARY_PATH (macOS) or R_GAMS_SYSDIR (all platforms) environment variable.")
+  }
+} else {
+  # Use GAMS system directory passed via sysdir to load the GDX libraries for gdxrrw
+  if (!igdx(gamsSysDir=sysdir, silent=TRUE)) {
+    stop(str_glue("Cannot load GDX libraries from provided sysdir {sysdir}"))
   }
 }
 rm(global_options)
