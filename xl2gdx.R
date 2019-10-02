@@ -34,27 +34,29 @@
 #
 # BEWARE, leading and trailing whitespace in Excel fields is trimmed.
 #
-# BEWARE, unlike GDXXRW, sheets are selected case sensitively by name.
+# BEWARE, unlike GDXXRW, sheets names in rng attributes are case sensitive.
 #
 # Author: Albert Brouwer
 #
 # Todo:
 # - support set=?
 # - support ASCII projection for headers and dsets?
-# - Add output like:
-#   GDXXRW           28.1.0 r5b48834 Released Aug 02, 2019 VS8 x86 32bit/MS Window
-#   Input file : C:\work\GLOBIOM\GLOBIOM_FABLE\Data\LiveFAO\tablesFAO_2009april\ConsumptionLiveStock.xls
-#   Output file: C:\work\GLOBIOM\GLOBIOM_FABLE\Data\LiveFAO\ConsumptionLiveStock.gdx
-#   Total time = 4828 Ms
+
+start_time <- Sys.time()
+
+VERSION <- "beta"
+DATE <- "1-Oct-2019"
+RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
+GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
+
 library(gdxrrw)
 library(tidyverse)
 library(cellranger) # installed when you install tidyverse
 library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
-RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 
 # ---- Get command line arguments, or provide test arguments when running from RStudio ----
 
@@ -444,6 +446,10 @@ rm(global_options)
 
 # ---- Convert and write symbols ----
 
+cat(str_glue("xl2gdx {VERSION}, {DATE}"), sep='\n')
+cat(str_glue("Input file : {normalizePath(excel_file)}"), sep='\n')
+cat(str_glue("Output file : {normalizePath(gdx_file)}"), sep='\n')
+
 out_list <- list()
 for (symbol_dict in symbol_dicts) {
   name    <- symbol_dict$name
@@ -464,7 +470,7 @@ for (symbol_dict in symbol_dicts) {
     # NOTE: yields UTF-8 strings in case of special characters
     # NOTE: trims leading and trailing whitespace
     if (cdim == 1) {
-      tib <- suppressMessages(read_excel(excel_file, range=rng, guess_max=500000))
+      tib <- suppressMessages(read_excel(excel_file, range=rng, guess_max=GUESS_MAX))
       col_names <- colnames(tib)
       # Cut-off any columns as of first empty in-range column like GDXXRW does
       for (col in 1:length(tib)) {
@@ -483,7 +489,7 @@ for (symbol_dict in symbol_dicts) {
       # Multiple column header rows, read them first
       header_row_rng <- rng
       header_row_rng$lr[[1]] <- rng$ul[[1]]+cdim-1
-      col_header_rows <- suppressMessages(read_excel(excel_file, col_names=FALSE, range=header_row_rng, guess_max=500000))
+      col_header_rows <- suppressMessages(read_excel(excel_file, col_names=FALSE, range=header_row_rng, guess_max=GUESS_MAX))
       # Merge the rows with a <#> separator to column names
       col_names <- apply(col_header_rows, 2, function(col) str_c(col, collapse="<#>"))
       # Read the range without the header rows, instead setting the merged colulumn names
@@ -647,3 +653,6 @@ for (symbol_dict in symbol_dicts) {
 
 # Write the symbols
 wgdx.lst(gdx_file, out_list)
+
+# Print total processing time
+cat(str_glue("Total time = {format(Sys.time()-start_time)}"), sep='\n')
