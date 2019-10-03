@@ -131,7 +131,7 @@ USAGE <- str_c("Usage:",
               "    cdim=<number of column dimensions>",
               "    rdim=<number of row dimensions>",
               "    rng='[<sheet>!]<start_colrow>[:<end_colrow>]'",
-              "    project=Y (project latin special characters to ASCII for par symbols, e.g. ô->o, defaults to N)",
+              "    project=Y (project latin special characters to ASCII for par symbols, defaults to N)",
               sep="\n")
 
 # No arguments? Error with usage.
