@@ -40,13 +40,6 @@
 # - support ASCII projection for headers and dsets?
 
 start_time <- Sys.time()
-
-VERSION <- "beta"
-DATE <- "2-Oct-2019"
-RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
-GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
-TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
-
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
 
@@ -55,6 +48,27 @@ library(tidyverse)
 library(cellranger) # installed when you install tidyverse
 library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
+
+VERSION <- "beta"
+DATE <- "4-Oct-2019"
+RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
+GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
+TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
+
+# When encountering special characters in an Excel file, readxl represents them
+# as UTF-8. GDXXRW however uses a latin code page, probably windows-1252. So the
+# logical thing to do is to try to encode special characters with windows-1252
+# before generating the GDX. However, in spite of this encoding being defined
+# on Linux (see stri_enc_list()), doing such conversion can result in a "bytes"
+# encoding. Hence, the more standard and mostly equivalent (other than in the
+# 0x80-0x9F range) ISO-8859-1 encoding was tried instead, but it can result
+# in a "bytes" encoding on Windows. Therefore, first one and then the other
+# encoding is tried. If either one succeeds on a given platform, the results
+# are likely the same unless one of the weird characters in the 0x80-0x9F range
+# is present in the input. For a list of windows-1252 vs ISO-8859-1 differences
+# see https://en.wikipedia.org/wiki/Windows-1252.
+ENCODING_A <- "windows-1252" # First encoding to try for non-ASCII special characters
+ENCODING_B <- "ISO-8859-1" # Second encoding to try
 
 # ---- Get command line arguments, or provide test arguments when running from RStudio ----
 
@@ -90,11 +104,11 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=0") # too small rdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=1", "rdim=1", "project=invalid") # invalid value for project
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1", "rdim=1", "project=Y") # project only supported for par
-  args <- c("dummy.xlsx", "sysdir=C:/work", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
+  #args <- c("dummy.xlsx", "sysdir=does_not_exist", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
   
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
+  args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
   #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
@@ -109,6 +123,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
   #args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
   #args <- c("test.xlsx", "testdir=test15", "par=spacey", "rng=Sheet1!B2", "cdim=1", "rdim=2")
+  #args <- c("test.xlsx", "testdir=test16", "par=Chinese", "rng=Sheet1!B2", "cdim=1", "rdim=1")  # should fail
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -152,7 +167,7 @@ range2cell_limits <- function(range) {
   # The expected range format is: [<sheet>!]<start_colrow>[:<end_colrow>]
   ma <- str_match(range, "^(?:([^!]+)[!])?([:alpha:]+[:digit:]+)(?:[:]([:alpha:]+[:digit:]+))?$")
   if (is.na(ma[[1]])) {
-    stop(str_glue("Invalid Excel range '{range}'. Format should be [<sheet>!]<start_colrow>[:<end_colrow>]."))
+    stop(str_glue("Invalid Excel range '{range}'. Format should be [<sheet>!]<start_colrow>[:<end_colrow>]."), call.=FALSE)
   }
   if (!is.na(ma[[4]])) {
     # A range with both a start and end col/row
@@ -232,7 +247,7 @@ if ("sysdir" %in% names(preliminary_options)) {
     sysdir <- str_sub(sysdir, 1, -2)
   }
   if (!file.exists(sysdir)) {
-    stop(str_glue("Invalid sysdir= option value, {sysdir} does not exist!"))
+    stop(str_glue("Invalid sysdir, {sysdir} does not exist!"))
   }
 }
    
@@ -542,9 +557,8 @@ for (symbol_dict in symbol_dicts) {
       }
     }
     
-    # Project latin special characters in non-value columns to ASCII.
-    # Unlike iconv(), stri_trans_general() yields the same results independent of locale and OS.
-    to_latin <- FALSE
+    # Project-to ASCII or re-encode latin special characters
+    encoding <- "ASCII"
     for (col in 1:rdim) {
       if (typeof(tib[[col]]) == "character") {
         # A character column, for efficiency first collect the unique strings
@@ -556,28 +570,36 @@ for (symbol_dict in symbol_dicts) {
             if (any(Encoding(uniq_proj) == "UTF-8")) {
               stop(str_c("Cannot project special characters to ASCII: ", str_c(uniq_proj[Encoding(uniq_proj) == "UTF-8"], collapse=", "), collapse=""))
             }
-            # Project column to ASCII
-            message(str_c("Special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
+            # Must be some latin-related special characters, project these to ASCII
+            message(str_c("Latin special characters projected to ASCII look-alikes: ", str_c(str_c(uniq[Encoding(uniq) == "UTF-8"], uniq_proj[Encoding(uniq) == "UTF-8"], sep=" -> "), collapse=", "), collapse=""))
             tib[[col]] <- stri_trans_general(tib[[col]], "Latin-ASCII")
             rm(uniq_proj)
           } else {
-            # Check that unique column strings can be respresented as Windows-1252 (latin code page)
-            uniq_rep <- stri_encode(uniq, from="UTF-8", to="Windows-1252")
-            if (any(Encoding(uniq_rep) == "UTF-8")) {
-              stop(str_c("Cannot represent special characters with Windows-1252 (ASCII extended with latin code page): ", str_c(uniq_rep[Encoding(uniq_rep) == "UTF-8"], collapse=", "), collapse=""))
-            }
-            # Represent column as Windows-1252 (ASCII extended with latin code page)
-            to_latin <- TRUE
-            tib[[col]] <- stri_encode(tib[[col]], from="UTF-8", to="Windows-1252")
+            # Check that unique column strings can be respresented as as one of the defined encodings
+            encoding <- ENCODING_A
+            tryCatch(
+              {
+                uniq_rep <- stri_encode(uniq, from="UTF-8", to=encoding)
+                if (any(Encoding(uniq_rep) == "bytes")) {
+                  encoding <- ENCODING_B
+                  uniq_rep <- stri_encode(uniq, from="UTF-8", to=encoding)
+                }
+                if (any(Encoding(uniq_rep) == "UTF-8" | Encoding(uniq_rep) == "bytes")) warning("Trap dummy")
+              },
+              warning = function(e) {stop(str_glue("Special characters present for symbol {type}={name} in column {col} can neither be encoded with {ENCODING_A} nor {ENCODING_B}."), call.=FALSE)}
+            )
+            # Re-encode the column
+            tib[[col]] <- stri_encode(tib[[col]], from="UTF-8", to=encoding)
             rm(uniq_rep)
           }
         }
         rm(uniq)
       }
     }
-    if (to_latin) {
-      cat(str_glue("Note: non-ASCII special characters are present for symbol {type}={name} in column {col}. These were represented as Windows-1252 (ASCII extended with a latin code page). Handling of such text is locale-sensitive. Consider to project this symbol to ASCII using project=Y so that you can use locale-insensitive pure-ASCII handling after loading the GDX."), sep='\n')
+    if (encoding != "ASCII") {
+      cat(str_glue("Note: non-ASCII special characters are present for symbol {type}={name} in column {col}. These were represented with {encoding} encoding. Handling of such text is locale-sensitive. Consider to project this symbol to ASCII using project=Y so that you can use locale-insensitive pure-ASCII handling after loading the GDX."), sep='\n')
     }
+    rm(encoding)
 
     # Prepare tibble
     if (length(tib) == rdim+1 && !col_named[[rdim+1]]) {
