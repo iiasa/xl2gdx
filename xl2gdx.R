@@ -124,6 +124,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
   #args <- c("test.xlsx", "testdir=test15", "par=spacey", "rng=Sheet1!B2", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test16", "par=Chinese", "rng=Sheet1!B2", "cdim=1", "rdim=1")  # should fail
+  #args <- c("test.xlsx", "testdir=test17", "par=PrimesPOP_EU27", "rng=EU27!A1:N2", "cdim=1", "rdim=1")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -156,7 +157,7 @@ if (length(args) == 0) {
 
 # Display usage if requested
 if (args[1] == "?" || args[1] == "-help" || args[1] == "--help") {
-  cat(USAGE)
+  cat(USAGE, sep='\n')
   quit(save="no")
 }
 
