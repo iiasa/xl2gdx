@@ -125,6 +125,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test15", "par=spacey", "rng=Sheet1!B2", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test16", "par=Chinese", "rng=Sheet1!B2", "cdim=1", "rdim=1")  # should fail
   #args <- c("test.xlsx", "testdir=test17", "par=PrimesPOP_EU27", "rng=EU27!A1:N2", "cdim=1", "rdim=1")
+  #args <- c("test.xls", "testdir=test18", "par=PrimesBiomassRef_MA", "rng=Summary_1!A2:M61", "cdim=1", "rdim=2")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -611,6 +612,15 @@ for (symbol_dict in symbol_dicts) {
       if (RESHAPE) {
         # Reshape to collect value columns and add to list of symbols to output, does its own factoring
         tib <- wgdx.reshape(tib, rdim+1, symName=name, setsToo=FALSE)[[1]] %>% drop_na
+        # Workaround for wgdx.reshape() leaving gathered value column as character type in case of anomalous values even though it drops those.
+        if (typeof(tib[["value"]]) == "character") {
+          dbls <- suppressWarnings((as.double(tib[["value"]])))
+          if (all(!is.na(dbls))) {
+            # Everything can be converted to double
+            tib[["value"]] <- dbls
+          }
+          rm(dbls)
+        }
       } else {
         # Gather value-containing columns as a new pair of key-value columns
         tib <- tib %>%
@@ -628,25 +638,32 @@ for (symbol_dict in symbol_dicts) {
     
     # Work around Excel having converted number-alike strings to binary floating point representation, thereby introducing
     # rounding errors of fractional decimal values that cannot be represented exactly as a binary floating point number.
+    # We do this after reshaping and factoring to reduce the involved overhead, and only for the non-value columns as
+    # these are used for indexing: miniscule discepancies in values do not matter.
     for (col in 1:rdim) {
-      lvls <- levels(tib[[col]])
-      if (typeof(lvls) == "character") {
-        ma <- str_match(lvls, "[.][:digit:]+[09]{8}[:digit:]")
-        if (!all(is.na(ma))) {
-          # Occurrences of >=8 consecutive 0s or 9s after a point, Excel mangling is likely, try to convert these to double
-          dbls <- suppressWarnings(as.double(lvls[!is.na(ma)]))
-          if (!all(is.na(dbls))) {
-            warning(str_glue("Fixing Excel mangling for symbol {type}={name} column {col}."))
-            # Revert converted doubles to character strings, getting rid of binary rounding through decimal rounding
-            lvls[!is.na(ma)][!is.na(dbls)] <- as.character(dbls[!is.na(dbls)])
-            # Replace with fixed levels
-            levels(tib[[col]]) <- lvls
+      if (length(tib[[col]]) > 0) {
+        # Colum is not empty and should have been factored
+        stopifnot(is.factor(tib[[col]]))
+        lvls <- levels(tib[[col]])
+        if (typeof(lvls) == "character") {
+          ma <- str_match(lvls, "[.][:digit:]+[09]{8}[:digit:]")
+          if (!all(is.na(ma))) {
+            # Occurrences of >=8 consecutive 0s or 9s after a point, Excel mangling is likely, try to convert these to double.
+            dbls <- suppressWarnings(as.double(lvls[!is.na(ma)]))
+            if (!all(is.na(dbls))) {
+              # Some matches could be converted to doubles, let's fix these.
+              warning(str_glue("Fixing Excel mangling for symbol {type}={name} column {col}."))
+              # Revert convertables to character strings, getting rid of binary rounding through decimal rounding.
+              lvls[!is.na(ma)][!is.na(dbls)] <- as.character(dbls[!is.na(dbls)])
+              # Replace with fixed levels
+              levels(tib[[col]]) <- lvls
+            }
+            rm(dbls)
           }
-          rm(dbls)
+          rm(ma)
         }
-        rm(ma)
+        rm(lvls)
       }
-      rm(lvls)
     }
 
     if (cdim > 1) {
@@ -657,7 +674,7 @@ for (symbol_dict in symbol_dicts) {
         if (!is.factor(tib[[col]])) {tib[[col]] <- factor(tib[[col]])}
       }
     }
-    
+
     # Annotate and add tibble to output list
     attr(tib, "symName") <- name
     attr(tib, "ts") <- str_glue("Converted from {basename(excel_file)}{ifelse(is.na(rng$sheet), '', str_glue(' sheet {rng$sheet}'))}")
