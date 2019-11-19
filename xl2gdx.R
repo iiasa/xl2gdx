@@ -39,6 +39,7 @@
 # - support set=?
 # - support ASCII projection for headers and dsets?
 
+script_dir <- ifelse(.Platform$GUI == "RStudio", dirname(rstudioapi::getActiveDocumentContext()$path), getwd()) # getActiveDocumentContext() does not work when debugging, set breakpoint later
 start_time <- Sys.time()
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
@@ -50,7 +51,7 @@ library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
 
 VERSION <- "beta"
-DATE <- "4-Oct-2019"
+DATE <- "19-Nov-2019"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
@@ -108,7 +109,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   
   # Conversion tests
   #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-  args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
+  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
   #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
   #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
   #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
@@ -126,6 +127,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test16", "par=Chinese", "rng=Sheet1!B2", "cdim=1", "rdim=1")  # should fail
   #args <- c("test.xlsx", "testdir=test17", "par=PrimesPOP_EU27", "rng=EU27!A1:N2", "cdim=1", "rdim=1")
   #args <- c("test.xls", "testdir=test18", "par=PrimesBiomassRef_MA", "rng=Summary_1!A2:M61", "cdim=1", "rdim=2")
+  args <- c("test.xlsx", "testdir=test19", "@taskin.txt")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -234,7 +236,7 @@ rm(option_matches)
 
 # Change current directory for testing
 if ("testdir" %in% names(preliminary_options)) {
-  setwd(str_c(dirname(rstudioapi::getActiveDocumentContext()$path), "/", preliminary_options$testdir))
+  setwd(str_c(script_dir, "/", preliminary_options$testdir))
 }
 if ("abstestdir" %in% names(preliminary_options)) {
   setwd(preliminary_options$abstestdir)
@@ -328,9 +330,9 @@ SYMBOL_OPTIONS <- c("dset", "par", "set")
 SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng", "project")
 ALL_OPTIONS <- c(GLOBAL_OPTIONS, SYMBOL_OPTIONS, SYMBOL_ATTRIBUTE_OPTIONS)
 
-# Check that all option names are valid
+# Check that all option names are supported
 if (!all(onames %in% ALL_OPTIONS)) {
-  stop(str_glue("Invalid option: '{args[[i]]}'!"))
+  stop(str_glue("Unsupported option(s): '{onames[!(onames %in% ALL_OPTIONS)]}'!"))
 }
 
 # Classify option names and assert that the classes do not intersect and cover all keywords
