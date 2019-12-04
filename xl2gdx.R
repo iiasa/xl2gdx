@@ -41,6 +41,7 @@
 
 script_dir <- ifelse(.Platform$GUI == "RStudio", dirname(rstudioapi::getActiveDocumentContext()$path), getwd()) # getActiveDocumentContext() does not work when debugging, set breakpoint later
 start_time <- Sys.time()
+dupe_errors <- 0
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
 
@@ -51,7 +52,7 @@ library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
 
 VERSION <- "beta"
-DATE <- "19-Nov-2019"
+DATE <- "4-Dec-2019"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
@@ -83,6 +84,8 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xls") # an xls, but no symbol.
   #args <- c("dummy.xlsx") # an xlsx, but no symbol
   #args <- c("dummy.xLsX") # an xlsx, but no symbol
+  #args <- c("dummy.xls", "maxdupeerrors=bad") # non-integer maxdupeerrors
+  #args <- c("dummy.xls", "maxdupeerrors=-1") # negative maxdupeerrors
   #args <- c("dummy.xlsx", "invalid") # additional non-option argument that is not an options file
   #args <- c("dummy.xlsx", "invalid", "@options_file", "@another_options_file") # additional non-option argument that is not an options file
   #args <- c("dummy.xlsx", "@options_file", "output=foo") # options file is not the last argument
@@ -142,6 +145,7 @@ USAGE <- str_c("Usage:",
               "    output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
               "    index='<sheet>!<start_colrow>'",
               "    sysdir=<GAMS system directory> (pass %gams.sysdir%)",
+              "    maxdupeerrors=<max>",
               "Symbol options (one or more):",
               "    dset=<name of domain set to write>",
               "    par=<name of parameter to write>",
@@ -242,6 +246,16 @@ if ("abstestdir" %in% names(preliminary_options)) {
   setwd(preliminary_options$abstestdir)
 }
 
+# Check maxdupeerrors option
+max_dupe_errors <- NA
+dupe_errors <- 0
+if ("maxdupeerrors" %in% names(preliminary_options)) {
+  max_dupe_errors <- preliminary_options$maxdupeerrors
+  suppressWarnings(max_dupe_errors <- as.integer(max_dupe_errors))
+  if (is.na(max_dupe_errors)) {stop("Non-integer maxdupeerrors= option value!")}
+  if (max_dupe_errors < 0) {stop("Negative maxdupeerrors= option value!")}
+}
+
 # Check that any provided GAMS system directory exists
 sysdir <- NA
 if ("sysdir" %in% names(preliminary_options)) {
@@ -324,7 +338,7 @@ onames <- str_to_lower(option_matches[,2][!is.na(option_matches[,1])])
 values <- option_matches[,3][!is.na(option_matches[,1])]
 
 # Define options classes
-PUBLIC_GLOBAL_OPTIONS <- c("index", "output", "sysdir")
+PUBLIC_GLOBAL_OPTIONS <- c("index", "maxdupeerrors", "output", "sysdir")
 GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir", "abstestdir")
 SYMBOL_OPTIONS <- c("dset", "par", "set")
 SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng", "project")
@@ -550,17 +564,51 @@ for (symbol_dict in symbol_dicts) {
     if (any(Encoding(col_names) == "UTF-8")) {
       stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
     }
-    col_named <- col_names != str_c("...", as.character(1:length(tib)))
+
+    # Check which columns were named (were not were assigned a .name_repair="unique" extension as name by read_excel)
+    col_extensions <- str_c("...", as.character(1:length(tib)))
+    col_named <- col_names != col_extensions
+
+    # Check that multiple value columns were all named
     if (length(tib) > rdim+1) {
       # Multiple value columns
       if (!all(col_named[(rdim+1):length(tib)])) {
         stop(str_glue("Excel input of symbol {type}={name} has multiple value columns ({rdim+1}-{length(tib)}), but not all these columns have header names and as such cannot be gathered to a gdx dimension!"))
       }
-      if (length(unique(col_names[(rdim+1):length(tib)])) != length(tib)-rdim) {
-        stop(str_glue("Excel input of symbol {type}={name} has multiple value columns ({rdim+1}-{length(tib)}), but their header names are not unique as such cannot be gathered to a gdx dimension!"))
-      }
     }
-    
+
+    # Drop columns with names that already occurred like GDXXRW does
+    col_extended <- str_sub(col_names, -(str_length(col_extensions))) == col_extensions
+    col_names_original <- col_names
+    col_names_original[col_extended] <- str_sub(col_names[col_extended], 1, str_length(col_names[col_extended])-str_length(col_extensions[col_extended]))
+    col_name_already_occurred <- duplicated(col_names_original)
+    if (any(col_named & col_name_already_occurred)) {
+      # Determine entries before dropping
+      entries_before_dropping <- length(tib)*tally(tib)
+      # Drop columns from tibble
+      tib <- tib[!(col_named & col_name_already_occurred)]
+      # Remove extensions names of remaining columns that are no longer duplicated
+      col_names[col_named & col_extended] <- col_names_original[col_named & col_extended]
+      colnames(tib) <- col_names[!(col_named & col_name_already_occurred)]
+      col_names <- colnames(tib)
+      # Determine number of dropped duplicate entries
+      duplicate_entries <- entries_before_dropping - length(tib)*tally(tib)
+      # Warn about duplicate entries
+      if (duplicate_entries > 0) warning(str_glue("There were {duplicate_entries} duplicate entries for symbol {name}")) 
+      # Handle duplucate entries
+      if (duplicate_entries > 0) {
+        # Throw an error when no duplicate entries are allowed
+        if (is.na(max_dupe_errors)) stop(str_glue("Duplicate entries not allowed, no maxdupeerrors option provided!"))
+        # Update dupe error count and see if max exceeded
+        dupe_errors <- dupe_errors + duplicate_entries
+        if (dupe_errors > max_dupe_errors) {
+          stop(str_glue("Number of duplicate entries exceeds {max_dupe_errors} as set via the maxdupeerros option!"))
+        }
+      }
+      rm(entries_before_dropping, duplicate_entries)
+    }
+    rm(col_extended, col_names_original, col_name_already_occurred)
+
     # Project-to ASCII or re-encode latin special characters
     encoding <- "ASCII"
     for (col in 1:rdim) {
