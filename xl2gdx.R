@@ -133,6 +133,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test19", "@taskin2.txt")
   #args <- c("test.xlsx", "testdir=test19", "maxdupeerrors=100", "@taskin2.txt") # fail, duplicate entries exceed maxdupeerrors
   #args <- c("test.xlsx", "testdir=test19", "MaxDupeErrors=1000", "@taskin2.txt") # pass. check case insensitivity of maxdupeerrors option
+  #args <- c("test.xlsx", "testdir=test20", "par=Energy_req_IP_Biomass", "rng=IP_Biomass!a2:b2787", "rdim=1", "cdim=0", "par=Energy_req_Forest_Residues", "rng=ForestResidues!a2:b2451", "rdim=1", "cdim=0")
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
