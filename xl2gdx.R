@@ -570,7 +570,7 @@ for (symbol_dict in symbol_dicts) {
 
     # Check which columns were named (were not were assigned a .name_repair="unique" extension as name by read_excel)
     col_extensions <- str_c("...", as.character(1:length(tib)))
-    col_named <- col_names != col_extensions
+    col_named <- !is.na(col_names) & (col_names != col_extensions)
 
     # Check that multiple value columns were all named
     if (length(tib) > rdim+1) {
@@ -581,7 +581,7 @@ for (symbol_dict in symbol_dicts) {
     }
 
     # Drop columns with names that already occurred like GDXXRW does
-    col_extended <- str_sub(col_names, -(str_length(col_extensions))) == col_extensions
+    col_extended <- !is.na(col_names) & (str_sub(col_names, -(str_length(col_extensions))) == col_extensions)
     col_names_original <- col_names
     col_names_original[col_extended] <- str_sub(col_names[col_extended], 1, str_length(col_names[col_extended])-str_length(col_extensions[col_extended]))
     col_name_already_occurred <- duplicated(col_names_original)
