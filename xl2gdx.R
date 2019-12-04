@@ -104,7 +104,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "set=foo", "rng=bar!A1:B2") # no end col/row allowed for a set
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=invalid") # non-integer cdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=invalid") # non-integer rdim
-  #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=0") # too small cdim
+  #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=-1") # too small cdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "rdim=0") # too small rdim
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=1", "rdim=1", "project=invalid") # invalid value for project
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1", "rdim=1", "project=Y") # project only supported for par
@@ -449,7 +449,7 @@ for (i in 1:length(symbol_dicts)) {
     cdim <- symbol_dict$cdim
     suppressWarnings(cdim <- as.integer(cdim))
     if (is.na(cdim)) {stop(str_glue("Non-integer cdim option value for symbol {symbol_dict$name}!"))}
-    if (cdim < 1) {stop(str_glue("Invalid cdim={cdim} option value for symbol {symbol_dict$name}!"))}
+    if (cdim < 0) {stop(str_glue("Invalid cdim={cdim} option value for symbol {symbol_dict$name}!"))}
     symbol_dict$cdim <- cdim
   }
   # Coerce any rdim field to integer
@@ -520,8 +520,8 @@ for (symbol_dict in symbol_dicts) {
 
     # Read Excel subset as a tibble, merging multiple column header rows if needed
     # NOTE: yields UTF-8 strings in case of special characters
-    if (cdim == 1) {
-      tib <- suppressMessages(read_excel(excel_file, range=rng, guess_max=GUESS_MAX, trim_ws=TRIM_WS))
+    if (cdim <= 1) {
+      tib <- suppressMessages(read_excel(excel_file, range=rng, col_names=(cdim==1), guess_max=GUESS_MAX, trim_ws=TRIM_WS))
       col_names <- colnames(tib)
       # Cut-off any columns as of first empty in-range column like GDXXRW does
       for (col in 1:length(tib)) {
