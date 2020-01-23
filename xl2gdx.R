@@ -52,7 +52,7 @@ library(readxl) # installed when you install tidyverse
 library(stringi) # installed when you install tidyverse
 
 VERSION <- "beta"
-DATE <- "4-Dec-2019"
+DATE <- "23-Jan-2019"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
@@ -308,7 +308,10 @@ if ("index" %in% names(preliminary_options)) {
     stop(str_glue("Index sheet has {col_count} columns, expecting 5!"))
   }
   # Require  column names
-  if (!(all(colnames(tib) == c("...1", "...2", "...3", "rdim", "cdim")) || all(colnames(tib) == c("...1", "...2", "...3", "cdim", "rdim")))) {
+  if (!(all(colnames(tib) == c("...1", "...2", "...3", "rdim", "cdim")) ||
+        all(colnames(tib) == c("...1", "...2", "...3", "cdim", "rdim")) ||
+        all(colnames(tib) == c("X__1", "X__2", "X__3", "rdim", "cdim")) ||
+        all(colnames(tib) == c("X__1", "X__2", "X__3", "cdim", "rdim")))) {
     stop(str_glue("Unexpected column names in index sheet. The only supported naming has the first three out of 5 columns unnamed, and the last two columns should be named 'rdim' and 'cdim'."))
   }
   # Turn the tibble rows into strings with key=value options and extract these as a character vector
@@ -526,7 +529,8 @@ for (symbol_dict in symbol_dicts) {
       col_names <- colnames(tib)
       # Cut-off any columns as of first empty in-range column like GDXXRW does
       for (col in 1:length(tib)) {
-        if (col_names[[col]] == str_c("...", col)) {
+        if ((col_names[[col]] == str_c("...", col)) ||
+            (col_names[[col]] == str_c("X__", col))) {
           # Column has no name
           if (all(is.na(tib[[col]]))) {
             # Column has no values either, cut it and all columns to the right off
@@ -568,9 +572,12 @@ for (symbol_dict in symbol_dicts) {
       stop(str_c("Special characters in column names not supported!: ", str_c(col_names[Encoding(col_names) == "UTF-8"], collapse=", "), collapse=""))
     }
 
-    # Check which columns were named (were not were assigned a .name_repair="unique" extension as name by read_excel)
-    col_extensions <- str_c("...", as.character(1:length(tib)))
-    col_named <- !is.na(col_names) & (col_names != col_extensions)
+    # Check which columns were named and thus not assigned a .name_repair="unique" extension by read_excel
+    col_extensions_new <- str_c("...", as.character(1:length(tib)))
+    col_extensions_old <- str_c("X__", as.character(1:length(tib)))
+    length_col_extensions = length(col_extensions_new)
+    stopifnot(all(length_col_extensions == length(col_extensions_old)))
+    col_named <- !is.na(col_names) & (col_names != col_extensions_new) & (col_names != col_extensions_old)
 
     # Check that multiple value columns were all named
     if (length(tib) > rdim+1) {
@@ -580,10 +587,11 @@ for (symbol_dict in symbol_dicts) {
       }
     }
 
-    # Drop columns with names that already occurred like GDXXRW does
-    col_extended <- !is.na(col_names) & (str_sub(col_names, -(str_length(col_extensions))) == col_extensions)
+    # Drop columns with names that already occurred, like GDXXRW does
+    col_extended <- !is.na(col_names) & ((str_sub(col_names, -length_col_extensions) == col_extensions_new) |
+                                         (str_sub(col_names, -length_col_extensions) == col_extensions_old))
     col_names_original <- col_names
-    col_names_original[col_extended] <- str_sub(col_names[col_extended], 1, str_length(col_names[col_extended])-str_length(col_extensions[col_extended]))
+    col_names_original[col_extended] <- str_sub(col_names[col_extended], 1, str_length(col_names[col_extended])-length_col_extensions[col_extended])
     col_name_already_occurred <- duplicated(col_names_original)
     if (any(col_named & col_name_already_occurred)) {
       # Determine entries before dropping
