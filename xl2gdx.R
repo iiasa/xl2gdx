@@ -45,11 +45,11 @@ dupe_errors <- 0
 options(scipen=999) # disable scientific notation
 options(tidyverse.quiet=TRUE)
 
-library(gdxrrw)
-library(tidyverse)
-library(cellranger) # installed when you install tidyverse
-library(readxl) # installed when you install tidyverse
-library(stringi) # installed when you install tidyverse
+suppressWarnings(library(gdxrrw))
+suppressWarnings(library(tidyverse))
+suppressWarnings(library(cellranger)) # installed when you install tidyverse
+suppressWarnings(library(readxl)) # installed when you install tidyverse
+suppressWarnings(library(stringi)) # installed when you install tidyverse
 
 VERSION <- "beta"
 DATE <- "23-Jan-2019"
