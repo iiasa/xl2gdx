@@ -134,7 +134,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test19", "maxdupeerrors=100", "@taskin2.txt") # fail, duplicate entries exceed maxdupeerrors
   #args <- c("test.xlsx", "testdir=test19", "MaxDupeErrors=1000", "@taskin2.txt") # pass. check case insensitivity of maxdupeerrors option
   #args <- c("test.xlsx", "testdir=test20", "par=Energy_req_IP_Biomass", "rng=IP_Biomass!a2:b2787", "rdim=1", "cdim=0", "par=Energy_req_Forest_Residues", "rng=ForestResidues!a2:b2451", "rdim=1", "cdim=0")
-  #args <- c("test.xls", "testdir=test22", "index=INDEX!B4") # https://tidyselect.r-lib.org/reference/faq-external-vector.html
+  args <- c("test.xls", "testdir=test22", "index=INDEX!B4") # https://tidyselect.r-lib.org/reference/faq-external-vector.html
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -535,7 +535,7 @@ for (symbol_dict in symbol_dicts) {
           # Column has no name
           if (all(is.na(tib[[col]]))) {
             # Column has no values either, cut it and all columns to the right off
-            tib <- select(tib, -(col:length(tib)))
+            tib <- select(tib, -all_of(col:length(tib)))
             col_names <- colnames(tib)
             break
           }
