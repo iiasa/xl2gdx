@@ -1,3 +1,4 @@
 *.gdx
+*.log
 .Rhistory
 .Rproj.user
