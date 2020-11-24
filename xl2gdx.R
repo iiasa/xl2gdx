@@ -534,7 +534,13 @@ for (symbol_dict in symbol_dicts) {
           # Column has no name
           if (all(is.na(tib[[col]]))) {
             # Column has no values either, cut it and all columns to the right off
-            tib <- select(tib, -all_of(col:length(tib)))
+            if (exists('all_of', mode='function')) {
+              # avoid future error https://tidyselect.r-lib.org/reference/faq-external-vector.html
+              tib <- select(tib, -all_of(col:length(tib)))
+            } else {
+              # al_off() not yet available: no risk as ambiguity is not checked for
+              tib <- select(tib, -(col:length(tib)))
+            }
             col_names <- colnames(tib)
             break
           }
