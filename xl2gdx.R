@@ -51,7 +51,7 @@ suppressWarnings(library(cellranger)) # installed when you install tidyverse
 suppressWarnings(library(readxl)) # installed when you install tidyverse
 suppressWarnings(library(stringi)) # installed when you install tidyverse
 
-VERSION <- "v2020-11-20"
+VERSION <- "v2020-11-24"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
@@ -133,7 +133,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test19", "maxdupeerrors=100", "@taskin2.txt") # fail, duplicate entries exceed maxdupeerrors
   #args <- c("test.xlsx", "testdir=test19", "MaxDupeErrors=1000", "@taskin2.txt") # pass. check case insensitivity of maxdupeerrors option
   #args <- c("test.xlsx", "testdir=test20", "par=Energy_req_IP_Biomass", "rng=IP_Biomass!a2:b2787", "rdim=1", "cdim=0", "par=Energy_req_Forest_Residues", "rng=ForestResidues!a2:b2451", "rdim=1", "cdim=0")
-  args <- c("test.xls", "testdir=test22", "index=INDEX!B4") # https://tidyselect.r-lib.org/reference/faq-external-vector.html
+  #args <- c("test.xls", "testdir=test22", "index=INDEX!B4") # https://tidyselect.r-lib.org/reference/faq-external-vector.html
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
