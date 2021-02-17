@@ -28,8 +28,7 @@ USAGE <- str_c("Usage:",
 
 # No arguments? Error with usage.
 if (length(args) == 0) {
-  args <- "trial.orig"
-  #stop(str_c("No arguments!", USAGE, sep="\n"))
+  stop(str_c("No arguments!", USAGE, sep="\n"))
 }
 
 # Display usage if requested
@@ -49,17 +48,24 @@ loc <- default_locale()
 
 # Read the file as windows-1252 and project to ASCII
 loc$encoding <- "windows-1252"
-projected <- stri_trans_general(read_file(text_file, locale = loc), "Latin-ASCII")
+text <- read_file(text_file, locale = loc)
+projected <- stri_trans_general(text, "Latin-ASCII")
 
-# If projection has failed, try as ISO-8859-1
-
+# If projection has failed, try as ISO-8859-1 instead
 if (Encoding(projected) == "UTF-8") {
   loc$encoding <- "ISO-8859-1"
-  projected <- stri_trans_general(read_file(text_file, locale = loc), "Latin-ASCII")
+  text <- read_file(text_file, locale = loc)
+  projected <- stri_trans_general(text, "Latin-ASCII")
   if (Encoding(projected) == "UTF-8") {
     stop("Cannot project special characters to ASCII!")
   }
 }
 
-# Save the projected ASCII (subset of UTF-8)
-write_file(projected, text_file)
+# When special-characters were projected, overwrite file with ASCII
+if (projected != text) {
+  rm(text)
+  write_file(projected, text_file)
+  cat(str_glue("Special characters projected to ASCII in '{text_file}'."), sep='\n')
+} else {
+  cat(str_glue("Not modified, already pure ASCII: '{text_file}'."), sep='\n')
+}
