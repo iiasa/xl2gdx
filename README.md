@@ -5,11 +5,11 @@ R script to convert Excel to GDX:
 - Accepts the same arguments and a subset of the options that GDXXRW does.
 - Unlike GDXXRW, works on non-Windows platforms and does not require Office.
 
-Note that the included tests are Windows-only and do require Office since
-they compare GDXXRW output to xl2gdx output. The licensing conditions of
-the input Excel sheets included with the tests were not reviewed. Hence
-this repository is private: do not redistribute the test data. It is fine
-to redistribute the `xl2gdx.R` script.
+Tests are located in the separate private [xl2gdx-tests](https://github.com/iiasa/xl2gdx-tests)
+repository. That repository is private because the the licensing conditions of the
+corner-case input Excel sheets included with the tests are diverse and were not reviewed.
+To request access to the tests repository, email the author or post an issue
+in the issue tracker.
 
 For further information read the header comments in the script and see
 the [GDXXRW documentation](https://www.gams.com/latest/docs/T_GDXXRW.html).
