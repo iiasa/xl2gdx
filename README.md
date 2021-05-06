@@ -17,8 +17,10 @@ the [GDXXRW documentation](https://www.gams.com/latest/docs/T_GDXXRW.html).
 ## Requirements:
 
 - [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
-  reading/writing GDX files from R. For a list of which package versions
+  reading/writing GDX files from R. For a list of which binary package versions
   match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
+  * Note that if you can compile packages, for example with [Rtools](https://cran.r-project.org/bin/windows/Rtools/),
+    any source package version can be made to work with your R version. 
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection.
 
 **Beware** as of version V1.0.8, **gdxrrw** requires GAMS >= V33.
