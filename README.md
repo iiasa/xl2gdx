@@ -1,4 +1,4 @@
-# xl2gdx
+# xl2gdx.R
 
 R script to convert Excel to GDX:
 - Can replace GDXXRW for Excel-to-GDX conversion.
@@ -14,13 +14,23 @@ in the issue tracker.
 For further information read the header comments in the script and see
 the [GDXXRW documentation](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
-## Requirements:
+## Installation
 
+None. This is not an R package, `xl2gdx.R` is a utility script that can be invoked with
+command line parameters. Just copy it to a handy location. The same holds for the
+`project_to_ASCII.R` helper script.
+
+## Dependencies
+
+`xl2gdx.R` depends on:
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection.
 - [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
   reading/writing GDX files from R. For a list of which binary package versions
   match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
-  * **Beware** as of version V1.0.8, **gdxrrw** requires GAMS >= V33.
+  * **Beware**, as of version V1.0.8, **gdxrrw** requires GAMS >= V33.
     When you use an earlier GAMS version, use an earlier **gdxrrw** version.
   * Note that if you can compile packages, for example with [Rtools](https://cran.r-project.org/bin/windows/Rtools/),
     any source package version can be made to work with your R version. 
+
+`project_to_ASCII.R ` depends on:
+- The [tidyverse](https://www.tidyverse.org/) curated R package collection.
