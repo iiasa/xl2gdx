@@ -57,7 +57,7 @@ be installed though, and some environment variable may need to be set.
 
 ## Usage
 
-Both `xl2gdx.R` and `project_to_ASCII.R` can be invoked via the [`Rscript`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/Rscript.html) utility. It is recommended to add the directory containing `Rscript` to your `PATH` environment variable so that you can invoke it directly, or, on Linux/MacOS, omit it and have it be located by a [shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix)) present in both scripts.
+Both `xl2gdx.R` and `project_to_ASCII.R` can be invoked via the [`Rscript`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/Rscript.html) utility. It is recommended to add the directory containing `Rscript` to your `PATH` environment variable so that you can invoke it directly. When you do so on Linux/MacOS, you can omit the leading `Rscript` from the shell invocation of the scripts since `Rscript` will then be invoked via the [shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix)) present in both scripts.
 
 ### xl2gdx.R
 
