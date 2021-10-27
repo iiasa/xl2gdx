@@ -39,8 +39,8 @@ to be set.
   to a GAMS installation directory. It is probably best to point to the most
   recent version of GAMS that is installed.
   * **Beware** changed environment variables are not picked up until you
-    restart a process. Therefore, after changing on of the above-mentioned
-    environment variables, first restart your command-prompt, shell, GAMS
+    restart a process. Therefore, after changing one of the above-mentioned
+    environment variables, first restart your command prompt, shell, GAMS
     IDE or GAMS Studio before testing the installation or invoking
     `xl2gdx.R`.
   * If you use an environment variable to point to the GAMS installation
@@ -76,6 +76,16 @@ Linux/MacOS, you can omit the leading `Rscript` from the shell invocation of
 the scripts since `Rscript` will then be invoked via the
 [shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix))
 present in both scripts.
+
+When replacing a GDXXRW invocation in your GAMS code with `xl2gdx.R`, you will typically
+have a
+[`$call`](https://www.gams.com/36/docs/UG_DollarControlOptions.html#DOLLARcall) or
+[`execute`](https://www.gams.com/latest/docs/UG_GamsCall.html#UG_DollarExecute) statement
+that invokes GDXXRW. Unless unsupported options are used, it should be possible to
+replace the `GDXXRW` or `<path to GAMS dir>/GDXXRW` part of that invocation with
+`Rscript <relative path to xl2gdx.R>/xl2gdx.R` and things should work. To verify,
+the output of both invocations can be compared with
+[`GDXDIFF`](https://www.gams.com/36/docs/T_GDXDIFF.html?search=gdxdiff).
 
 ### xl2gdx.R
 
