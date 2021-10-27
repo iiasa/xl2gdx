@@ -123,7 +123,15 @@ the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
   defaults to `N`)
 
 ### project_to_ASCII.R
-  
+
+Project a windows-1252 or ISO-8859-1 encoded text file to ASCII.
+Intended to remove special characters from source files. Can be used
+in conjunction with he `project=Y` feature of `xl2gdx.R` to locate and
+convert special-character references to data in GAMS source files.
+
+**Warning:** this tool operates in-place, apply it only to source files
+under version control so that you can review and revert the changes.
+
 To invoke `project_to_ASCII.R`, issue:
 
 `[Rscript ]project_to_ASCII.R <text file with special characters>`
