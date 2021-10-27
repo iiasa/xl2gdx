@@ -38,7 +38,7 @@ to be set.
   instead point the **gdxrrw**-specific environment variable `R_GAMS_SYSDIR`
   to a GAMS installation directory. It is probably best to point to the most
   recent version of GAMS that is installed.
-  * **Beware** changed environment variables are not picked up until you
+  * **Beware:** changed environment variables are not picked up until you
     restart a process. Therefore, after changing one of the above-mentioned
     environment variables, first restart your command prompt, shell, GAMS
     IDE or GAMS Studio before testing the installation or invoking
@@ -51,7 +51,7 @@ to be set.
     > library(gdxrrw)
     > igdx(gamsSysDir='')
     ```
-  * **Beware**, recent versions of **gdxrrw** use a new GDX
+  * **Beware:**, recent versions of **gdxrrw** use a new GDX
     [API](https://en.wikipedia.org/wiki/API)
     that is only available with recent versions of GAMS. Make sure to
     [check the installation](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly).
@@ -116,7 +116,8 @@ the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
 - `cdim=<number of column dimensions>`
 - `rdim=<number of row dimensions>`
-- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'`
+- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` **Beware:** unlike GDXXRW
+  sheet names are case sensitive.
 - `project=Y` (project latin special characters to ASCII for `par=` symbols,
   defaults to `N`)
 
