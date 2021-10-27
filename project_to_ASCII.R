@@ -5,8 +5,11 @@
 # in conjunction with he project=Y feature of xl2gdx.R to locate and
 # convert special-character references to data in GAMS source files.
 #
-# WARING: this tool operates in-place, apply it only to source files
+# WARNING: this tool operates in-place, apply it only to source files
 # under version control so that you can review and revert the changes.
+#
+# For further documentation see the README in this script's GitHub repository:
+# https://github.com/iiasa/xl2gdx#readme
 #
 # Author: Albert Brouwer
 

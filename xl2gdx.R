@@ -1,43 +1,16 @@
 #!/usr/bin/env Rscript
 # Convert Excel to GDX
 #
-# This can replace GDXXRW for Excel-to-GDX conversion and accepts the same
-# arguments and a subset of the options that GDXXRW does. Unlike GDXXRW,
+# This script can replace GDXXRW for Excel-to-GDX conversion and accepts the
+# same arguments and a subset of the options that GDXXRW does. Unlike GDXXRW,
 # this script Works on non-Windows platforms and does not require Office.
 #
-# For further information, see the the USAGE definition below and the GDXXRW
-# documentation at https://www.gams.com/latest/docs/T_GDXXRW.html
-#
-# Requirements:
-# - an R installation that is not too old: tests pass with R V3.5.1 and V3.6.1
-# - gdxrrw R package: https://www.gams.com/latest/docs/T_GDXRRW.html
-# - tidyverse R package collection: https://www.tidyverse.org/
-#
-# NOTE, on Windows installing the gdxrrw source package will not work unless
-# you have a compiler installed, install a binary package instead. Binary
-# packages are provided for specific operating systems and R versions,
-# carefully select the appropriate package for download.
-#
-# To locate the GDX libraries in the GAMS system directory, the path specified
-# via the sysdir option is used if provided. Otherwise, the R_GAMS_SYSDIR
-# environment variable is used if set. Otherwise the GDX libraries are loaded
-# via the system-specific library search environment variable: PATH on Windows,
-# LD_LIBRARY_PATH on Linux, or DYLD_LIBRARY_PATH on macOS. The GDX libraries
-# are used via gdxrrw to write the output GDX.
-#
-# BEWARE, to guarantee that the written GDX files will load into the GAMS
-# version you are using, make sure that the GAMS system directory from which
-# the GDX libraries are loaded is not that of a newer GAMS version: the GDX
-# format can change between GAMS versions such that older GAMS versions cannot
-# load the new format.
-#
-# NOTE, unlike GDXXRW, sheet names in rng attributes are case sensitive.
+# For further documentation see the README in this script's GitHub repository:
+# https://github.com/iiasa/xl2gdx#readme
 #
 # Author: Albert Brouwer
 #
 # Todo:
-# - support set=?
-# - support ASCII projection for headers and dsets?
 
 script_dir <- ifelse(.Platform$GUI == "RStudio", dirname(rstudioapi::getActiveDocumentContext()$path), getwd()) # getActiveDocumentContext() does not work when debugging, set breakpoint later
 start_time <- Sys.time()
@@ -51,7 +24,7 @@ suppressWarnings(library(cellranger)) # installed when you install tidyverse
 suppressWarnings(library(readxl)) # installed when you install tidyverse
 suppressWarnings(library(stringi)) # installed when you install tidyverse
 
-VERSION <- "v2021-04-12"
+VERSION <- "v2021-10-27"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
@@ -142,12 +115,12 @@ if (Sys.getenv("RSTUDIO") == "1") {
 
 USAGE <- str_c("Usage:",
               "[Rscript ]xl2gdx.R <Excel file> [options] [@<options file>] [symbols]",
-              "Prefixing with Rscript is not necessary when invoking from a Linux/MacOS shell.",
+              "Full documentation: https://github.com/iiasa/xl2gdx#readme",
               "",
               "Global options (provide these first):",
               "    output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
               "    index='<sheet>!<start_colrow>'",
-              "    sysdir=<GAMS system directory> (pass %gams.sysdir%)",
+              "    sysdir=<GAMS system directory> (if omitted, the PATH/[DY]LD_LIBRARY_PATH/R_GAMS_SYSDIR environment variables are tried instead)",
               "    maxdupeerrors=<max>",
               "Symbol options (one or more):",
               "    dset=<name of domain set to write>",
