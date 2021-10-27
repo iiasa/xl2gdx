@@ -38,7 +38,11 @@ to be set.
   instead point the **gdxrrw**-specific environment variable `R_GAMS_SYSDIR`
   to a GAMS installation directory. It is probably best to point to the most
   recent version of GAMS that is installed.
-
+  * **Beware** changed environment variables are not picked up until you
+    restart a process. Therefore, after changing on of the above-mentioned
+    environment variables, first restart your command-prompt, shell, GAMS
+    IDE or GAMS Studio before testing the installation or invoking
+    `xl2gdx.R`.
   * If you use an environment variable to point to the GAMS installation
     directory, the following should work and report the used environment
     variable:
