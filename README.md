@@ -1,6 +1,6 @@
 # xl2gdx.R
 
-R script to convert Excel to GDX:
+R script to convert Excel to [GDX](https://www.gams.com/latest/docs/UG_GDX.html):
 - Can replace GDXXRW for Excel-to-GDX conversion.
 - Accepts the same arguments and a subset of the options that GDXXRW does.
 - Unlike GDXXRW, works on non-Windows platforms and does not require Office.
@@ -34,8 +34,8 @@ be installed though, and some environment variable may need to be set.
   or `LD_LIBRARY_PATH` (on Linux) environment variable. To make things more explicit, you can
   instead point the **gdxrrw**-specific environment variable `R_GAMS_SYSDIR` to a GAMS installation
   directory. It is probably best to choose the most recent version of GAMS that is installed.
-  * **Beware**, recent versions of **gdxrrw** use a new GDX API that is only available
-    with recent versions of GAMS. Make sure to
+  * **Beware**, recent versions of **gdxrrw** use a new GDX [API](https://en.wikipedia.org/wiki/API)
+    that is only available with recent versions of GAMS. Make sure to
     [check the installation](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly).
     If need be, install a newer GAMS version.
   * On Windows, it will likely prevent problems when you first install
