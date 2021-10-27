@@ -16,9 +16,10 @@ the [GDXXRW documentation](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
 ## Installation
 
-None. This is not an R package, `xl2gdx.R` is a utility script that can be invoked with
+This is not an R package, instead `xl2gdx.R` is a utility script that can be invoked with
 command line parameters. Just copy it to a handy location. The same holds for the
-`project_to_ASCII.R` helper script.
+`project_to_ASCII.R` helper script. Noe that the the dependencies listed below should
+be installed.
 
 ## Dependencies
 
@@ -36,5 +37,45 @@ command line parameters. Just copy it to a handy location. The same holds for th
     A package built for R version x.y.a may work with R version x.y.b (where x, y, a,
     and b are digits and a < b), though possibly with some warnings.
 
-`project_to_ASCII.R ` depends on:
+`project_to_ASCII.R` depends on:
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection.
+
+## Usage
+
+Both `xl2gdx.R` and `project_to_ASCII.R` can be invoked via the [`Rscript`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/Rscript.html) utility. It is recommended to add the directory containing `Rscript` to your `PATH` environment variable so that you can invoke it directly, or, on Linux/MacOS, ommit it and have it be located by a [shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix)) present in both scripts.
+
+### xl2gdx.R
+
+To invoke `xl2gdx.R` from the command line or shell, issue:
+
+`[Rscript ]xl2gdx.R <Excel file> [options] [@<options file>] [symbols]`
+
+The supported options are listed below. Details for most options are given in the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
+
+#### Global options (provide these first):
+
+- `output=<GDX file>` (if omitted, output to `<Excel file>` but with a `.gdx` extension)
+= `index='<sheet>!<start_colrow>'`
+= `sysdir=<GAMS system directory>` (pass %gams.sysdir%)
+= `maxdupeerrors=<max>`
+
+#### Symbol options (one or more):
+
+- `dset=<name of domain set to write>`
+- `par=<name of parameter to write>`
+- `set=<name of set to write>`
+
+#### Symbol attribute options (associated with preceeding symbol):
+
+- `cdim=<number of column dimensions>`
+- `rdim=<number of row dimensions>`
+- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'`
+- `project=Y` (project latin special characters to ASCII for par symbols, defaults to `N`)
+
+### project_to_ASCII.R
+  
+To invoke `project_to_ASCII.R`, issue:
+
+[Rscript ]project_to_ASCII.R <text file with special characters>
+
+This projects the given text file to ASCII when possible, replacing it in-place.
