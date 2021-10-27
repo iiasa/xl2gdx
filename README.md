@@ -1,7 +1,8 @@
 # xl2gdx.R
 
 R script to convert Excel to [GDX](https://www.gams.com/latest/docs/UG_GDX.html):
-- Can replace GDXXRW for Excel-to-GDX conversion.
+- Can replace [GDXXRW](https://www.gams.com/latest/docs/T_GDXXRW.html) for
+  Excel-to-GDX conversion.
 - Accepts the same arguments and a subset of the options that GDXXRW does.
 - Unlike GDXXRW, works on non-Windows platforms and does not require Office.
 
