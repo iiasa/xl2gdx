@@ -33,10 +33,11 @@ to be set.
   [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
   you can use the `sysdir` command line option (see below) or make sure a
   sufficiently recent GAMS installation directory is included in either the
-  `PATH` (on Windows) or `LD_LIBRARY_PATH` (on Linux) environment variable.
-  To make things more explicit, you can instead point the **gdxrrw**-specific
-  environment variable `R_GAMS_SYSDIR` to a GAMS installation directory. It is
-  probably best to choose the most recent version of GAMS that is installed.
+  `PATH` (on Windows), or `LD_LIBRARY_PATH` (on Linux), or `DYLD_LIBRARY_PATH`
+  (on MacOS) environment variable. To make things more explicit, you can
+  instead point the **gdxrrw**-specific environment variable `R_GAMS_SYSDIR`
+  to a GAMS installation directory. It is probably best to point to the most
+  recent version of GAMS that is installed.
 
   * If you use an environment variable to point to the GAMS installation
     directory, the following should work and report the used environment
