@@ -18,31 +18,39 @@ the [GDXXRW documentation](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
 This is not an R package, instead `xl2gdx.R` is a utility script that can be invoked with
 command line parameters. Just copy it to a handy location. The same holds for the
-`project_to_ASCII.R` helper script. Noe that the the dependencies listed below should
-be installed.
+`project_to_ASCII.R` helper script. The dependencies listed below should first
+be installed though, and some environment variable may need to be set.
 
 ## Dependencies
 
 `xl2gdx.R` depends on:
+- [R](https://www.r-project.org). After installation, ensure that `Rscript` is on-path.
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection.
 - [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
-  reading/writing GDX files from R. For a list of which binary package versions
-  match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
-  * **Beware**, as of version V1.0.8, **gdxrrw** requires GAMS >= V33.
-    When you use an earlier GAMS version, use an earlier **gdxrrw** version.
-  * Note that if you can compile packages, for example with [Rtools](https://cran.r-project.org/bin/windows/Rtools/),
-    any source package version can be made to work with your R version.
-  * If you don't want to go through the hassle of installing Rtools, try a binary
-    package built for a slightly earlier R release than the one you have installed.
-    A package built for R version x.y.a may work with R version x.y.b (where x, y, a,
-    and b are digits and a < b), though possibly with some warnings.
+  reading/writing GDX files from R. To
+  [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
+  you can use the `sysdir` command line option (see below) or make sure a
+  sufficiently recent GAMS installation directory is included in either the `PATH` (on Windows)
+  or `LD_LIBRARY_PATH` (on Linux) environment variable. To make things more explicit, you can
+  instead point the **gdxrrw**-specific environment variable `R_GAMS_SYSDIR` to a GAMS installation
+  directory. It is probably best to choose the most recent version of GAMS that is installed.
+  * **Beware**, recent versions of **gdxrrw** use a new GDX API that is only available
+    with recent versions of GAMS. Make sure to
+    [check the installation](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly).
+    If need be, install a newer GAMS version.
+  * On Windows, it will likely prevent problems when you first install
+    [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
+    so that you can compile the **gdxrrw** and other R packages from source.
+  * Without a compiler, you should download a binary **gdxrrw** package
+    that matches your R version. For a list of which binary package versions
+    match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
 
 `project_to_ASCII.R` depends on:
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection.
 
 ## Usage
 
-Both `xl2gdx.R` and `project_to_ASCII.R` can be invoked via the [`Rscript`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/Rscript.html) utility. It is recommended to add the directory containing `Rscript` to your `PATH` environment variable so that you can invoke it directly, or, on Linux/MacOS, ommit it and have it be located by a [shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix)) present in both scripts.
+Both `xl2gdx.R` and `project_to_ASCII.R` can be invoked via the [`Rscript`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/Rscript.html) utility. It is recommended to add the directory containing `Rscript` to your `PATH` environment variable so that you can invoke it directly, or, on Linux/MacOS, omit it and have it be located by a [shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix)) present in both scripts.
 
 ### xl2gdx.R
 
@@ -55,9 +63,10 @@ The supported options are listed below. Details for most options are given in th
 #### Global options (provide these first):
 
 - `output=<GDX file>` (if omitted, output to `<Excel file>` but with a `.gdx` extension)
-= `index='<sheet>!<start_colrow>'`
-= `sysdir=<GAMS system directory>` (pass %gams.sysdir%)
-= `maxdupeerrors=<max>`
+- `index='<sheet>!<start_colrow>'`
+- `sysdir=<GAMS system directory>`. When omitted, the GAMS installation directory must
+  be reachable via an environment variable ([see above](#dependencies)).
+- `maxdupeerrors=<max>`
 
 #### Symbol options (one or more):
 
@@ -70,12 +79,12 @@ The supported options are listed below. Details for most options are given in th
 - `cdim=<number of column dimensions>`
 - `rdim=<number of row dimensions>`
 - `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'`
-- `project=Y` (project latin special characters to ASCII for par symbols, defaults to `N`)
+- `project=Y` (project latin special characters to ASCII for `par=` symbols, defaults to `N`)
 
 ### project_to_ASCII.R
   
 To invoke `project_to_ASCII.R`, issue:
 
-[Rscript ]project_to_ASCII.R <text file with special characters>
+`[Rscript ]project_to_ASCII.R <text file with special characters>`
 
 This projects the given text file to ASCII when possible, replacing it in-place.
