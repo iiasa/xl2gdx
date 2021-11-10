@@ -7,7 +7,7 @@ R script to convert Excel to [GDX](https://www.gams.com/latest/docs/UG_GDX.html)
 - Unlike GDXXRW, works on non-Windows platforms and does not require Office.
 
 Tests are located in the separate private [xl2gdx-tests](https://github.com/iiasa/xl2gdx-tests)
-repository. That repository is private because the the licensing conditions of
+repository. That repository is private because the licensing conditions of
 the corner-case input Excel sheets included with the tests are diverse and
 were not reviewed. To request access to the tests repository, email the
 author or post an issue in the issue tracker.
