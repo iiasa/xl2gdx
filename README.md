@@ -38,7 +38,8 @@ to be set.
   (on MacOS) environment variable. To make things more explicit, you can
   instead point the **gdxrrw**-specific environment variable `R_GAMS_SYSDIR`
   to a GAMS installation directory. It is probably best to point to the most
-  recent version of GAMS that is installed.
+  recent version of GAMS that is installed. [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
+  for guidance on how to set environment variables.
   * **Beware:** changed environment variables are not picked up until you
     restart a process. Therefore, after changing one of the above-mentioned
     environment variables, first restart your command prompt, shell, GAMS
