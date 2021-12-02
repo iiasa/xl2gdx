@@ -57,9 +57,10 @@ to be set.
     that is only available with recent versions of GAMS. Make sure to
     [check the installation](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly).
     If need be, install a newer GAMS version.
-  * On Windows, it will likely prevent problems when you first install
-    [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
-    so that you can compile the **gdxrrw** and other R packages from source.
+  * On Windows, it will likely prevent problems when you first
+    [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
+    so that you can compile the **gdxrrw** and other R packages from source. **Beware:**
+    do not skip the **Putting Rtools on the PATH** step.
   * Without a compiler, you should download a binary **gdxrrw** package
     that matches your R version. For a list of which binary package versions
     match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
