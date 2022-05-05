@@ -40,7 +40,7 @@ to be set.
   to a GAMS installation directory. It is probably best to point to the most
   recent version of GAMS that is installed. [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
   for guidance on how to set environment variables.
-  * **Beware:** changed environment variables are not picked up until you
+  * **⚠️Beware:** changed environment variables are not picked up until you
     restart a process. Therefore, after changing one of the above-mentioned
     environment variables, first restart your command prompt, shell, GAMS
     IDE or GAMS Studio before testing the installation or invoking
@@ -53,7 +53,7 @@ to be set.
     > library(gdxrrw)
     > igdx(gamsSysDir='')
     ```
-  * **Beware:**, recent versions of **gdxrrw** use a new GDX
+  * **⚠️Beware:**, recent versions of **gdxrrw** use a new GDX
     [API](https://en.wikipedia.org/wiki/API)
     that is only available with recent versions of GAMS. Make sure to
     [check the installation](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly).
@@ -119,7 +119,7 @@ the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
 - `cdim=<number of column dimensions>`
 - `rdim=<number of row dimensions>`
-- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` **Beware:** unlike GDXXRW
+- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` **⚠️Beware:** unlike GDXXRW
   sheet names are case sensitive.
 - `project=Y` (project latin special characters to ASCII for `par=` symbols,
   defaults to `N`)
@@ -131,7 +131,7 @@ Intended to remove special characters from source files. Can be used
 in conjunction with he `project=Y` feature of `xl2gdx.R` to locate and
 convert special-character references to data in GAMS source files.
 
-**Warning:** this tool operates in-place, apply it only to source files
+**⚠️Warning:** this tool operates in-place, apply it only to source files
 under version control so that you can review and revert the changes.
 
 To invoke `project_to_ASCII.R`, issue:
