@@ -26,9 +26,25 @@ to be set.
 ## Dependencies
 
 `xl2gdx.R` depends on:
-- [R](https://www.r-project.org). After installation, ensure that `Rscript` is
-  on-path.
-- The [tidyverse](https://www.tidyverse.org/) curated R package collection.
+- [R](https://www.r-project.org). After installation, ensure that `R` and `Rscript` are
+  on-path by adding the right installation subdirectory to the `PATH` environment variable.
+  On Windows, this directory ends in `R-x.y.z\bin\x64` for the 64-bit binaries, where
+  `x.y.z` is the R version.
+  
+  * **⚠️Warning:** When installing R, old R versions are not automatically removed. Having
+  multiple R versions installed can cause confusion. Remove the older version unless you
+  have good reasons to keep them.
+  
+  * **⚠️Note:** After updating R, you will need re-install R packages.
+
+  * **⚠️Attention:** When you use RStudio and update R, you should make sure that RStudio
+  is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
+
+- The [tidyverse](https://www.tidyverse.org/) curated R package collection. From the R prompts, install with
+  ```R
+  install.packages("tidyverse")
+  ```
+  or use the RStudio package manager.
 - [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
   reading/writing GDX files from R. To
   [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
