@@ -48,13 +48,17 @@ to be set.
 - [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
   reading/writing GDX files from R. To
   [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
-  you can use the `sysdir` command line option (see below) or make sure a
+  containing the GDX libraries that it needs to read/write GDX files, you
+  can use the `sysdir` command line option (see below) or make sure a
   sufficiently recent GAMS installation directory is included in either the
   `PATH` (on Windows), or `LD_LIBRARY_PATH` (on Linux), or `DYLD_LIBRARY_PATH`
-  (on MacOS) environment variable. To make things more explicit, you can
-  instead point the **gdxrrw**-specific environment variable `R_GAMS_SYSDIR`
-  to a GAMS installation directory. It is probably best to point to the most
-  recent version of GAMS that is installed. [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
+  (on MacOS) environment variable.
+  
+  It is recommended to instead make things perfectly explicit by setting the
+  **gdxrrw**-specific environment variable `R_GAMS_SYSDIR` to point to
+  a GAMS installation directory. For reasons explained below, it is best
+  to point to the most recent version of GAMS that is installed.
+  [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
   for guidance on how to set environment variables.
   * **⚠️Beware:** changed environment variables are not picked up until you
     restart a process. Therefore, after changing one of the above-mentioned
@@ -64,20 +68,22 @@ to be set.
   * If you use an environment variable to point to the GAMS installation
     directory, the following should work and report the used environment
     variable:
-    ```
+    ```R
     $ R
     > library(gdxrrw)
     > igdx(gamsSysDir='')
     ```
-  * **⚠️Beware:**, recent versions of **gdxrrw** use a new GDX
-    [API](https://en.wikipedia.org/wiki/API)
-    that is only available with recent versions of GAMS. Make sure to
-    [check the installation](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly).
-    If need be, install a newer GAMS version.
+  * **⚠️Warning:**, the above will result in error with recent versions of **gdxrrw** unless you point
+    **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason is
+    that **gdxrrw** uses an updated faster GDX [API](https://en.wikipedia.org/wiki/API)
+    that is available as of GAMS 33. You may therefore need to install a newer GAMS version
+    and point *gdxrrw** at it as per the above instructions.
   * On Windows, it will likely prevent problems when you first
     [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
-    so that you can compile the **gdxrrw** and other R packages from source. **Beware:**
-    do not skip the **Putting Rtools on the PATH** step.
+    so that you can compile the **gdxrrw** and other R packages from source.
+    
+    **Beware:** when installing RTools 4.0, do not skip the **Putting Rtools on the PATH** step
+    listed in [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html).
   * Without a compiler, you should download a binary **gdxrrw** package
     that matches your R version. For a list of which binary package versions
     match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
