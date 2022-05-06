@@ -32,19 +32,22 @@ to be set.
   `x.y.z` is the R version.
   
   * **⚠️Warning:** When installing R, old R versions are not automatically removed. Having
-  multiple R versions installed can cause confusion. Remove the older version unless you
-  have good reasons to keep them.
+  multiple R versions installed can cause confusion. Remove any older R installations unless you
+  have good reasons to keep it. Be sure to delete any references to a removed R installation
+  as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
   
   * **⚠️Note:** After updating R, you will need re-install R packages.
 
   * **⚠️Attention:** When you use RStudio and update R, you should make sure that RStudio
   is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
 
-- The [tidyverse](https://www.tidyverse.org/) curated R package collection. From the R prompts, install with
+- The [tidyverse](https://www.tidyverse.org/) curated R package collection. From the R prompt, you can
+  install the tidyverse by issuing:
   ```R
   install.packages("tidyverse")
   ```
-  or use the RStudio package manager.
+  Alternatively, you can use the RStudio package management tab, but make sure
+  that RStudio is using the on-path R installation.
 - [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
   reading/writing GDX files from R. To
   [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
@@ -77,7 +80,7 @@ to be set.
     **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason is
     that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
     that is available as of GAMS 33. You may therefore need to install a newer GAMS version
-    and point *gdxrrw** at it as per the above instructions.
+    and point **gdxrrw** at it as per the above instructions.
   * On Windows, it will likely prevent problems when you first
     [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
     so that you can compile the **gdxrrw** and other R packages from source.
