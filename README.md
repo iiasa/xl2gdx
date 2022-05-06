@@ -49,18 +49,20 @@ to be set.
   Alternatively, you can use the RStudio package management tab, but make sure
   that RStudio is using the on-path R installation.
 - [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
-  reading/writing GDX files from R. To
-  [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
+  reading/writing GDX files from R. You cannot install it from CRAN, you have
+  to install it from GitHub as per [these instructions](https://github.com/GAMS-dev/gdxrrw#how-to-install-from-github).
+  To [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
   containing the GDX libraries that it needs to read/write GDX files, you
   can use the `sysdir` command line option (see below) or make sure a
   sufficiently recent GAMS installation directory is included in either the
   `PATH` (on Windows), or `LD_LIBRARY_PATH` (on Linux), or `DYLD_LIBRARY_PATH`
   (on MacOS) environment variable.
   
-  It is recommended to instead make things perfectly explicit by setting the
-  **gdxrrw**-specific environment variable `R_GAMS_SYSDIR` to point to
+  However, it is **strongly recommended** to instead make your environment
+  configuration explicit and  purpose-specific by setting the
+  **gdxrrw**-dedicated environment variable `R_GAMS_SYSDIR` to point to
   a GAMS installation directory. For reasons explained below, it is best
-  to point to the most recent version of GAMS that is installed.
+  to point to the most recent version of GAMS that you have installed.
   [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
   for guidance on how to set environment variables.
   * **⚠️Beware:** changed environment variables are not picked up until you
