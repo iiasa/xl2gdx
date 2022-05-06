@@ -82,7 +82,7 @@ to be set.
     **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason is
     that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
     that is available as of GAMS 33. You may therefore need to install a newer GAMS version
-    and point **gdxrrw** at it as per the above instructions.
+    and point **gdxrrw** at it.
   * On Windows, it will likely prevent problems when you first
     [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
     so that you can compile the **gdxrrw** and other R packages from source.
