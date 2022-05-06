@@ -73,9 +73,9 @@ to be set.
     > library(gdxrrw)
     > igdx(gamsSysDir='')
     ```
-  * **⚠️Warning:**, the above will result in error with recent versions of **gdxrrw** unless you point
+  * **⚠️Warning:**, the above will result in an error with recent versions of **gdxrrw** unless you point
     **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason is
-    that **gdxrrw** uses an updated faster GDX [API](https://en.wikipedia.org/wiki/API)
+    that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
     that is available as of GAMS 33. You may therefore need to install a newer GAMS version
     and point *gdxrrw** at it as per the above instructions.
   * On Windows, it will likely prevent problems when you first
