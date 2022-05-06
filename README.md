@@ -162,3 +162,9 @@ To invoke `project_to_ASCII.R`, issue:
 
 This projects the given text file to ASCII when possible, replacing it
 in-place.
+
+## Troubleshooting
+
+### Error: function 'Rcpp_precious_remove' not provided by package 'Rcpp'
+
+When using `xl2gdx.R` produces this error, upgrade the **Rcpp** package to version 1.0.7 or higher.
