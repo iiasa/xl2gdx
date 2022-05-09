@@ -31,14 +31,14 @@ to be set.
   On Windows, this directory ends in `R-x.y.z\bin\x64` for the 64-bit binaries, where
   `x.y.z` is the R version.
   
-  * **⚠️Warning:** When installing R, old R versions are not automatically removed. Having
+  * **:warning:Warning:** When installing R, old R versions are not automatically removed. Having
   multiple R versions installed can cause confusion. Remove any older R installations unless you
   have good reasons to keep it. Be sure to delete any references to a removed R installation
   as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
   
-  * **⚠️Note:** After updating R, you will need re-install R packages.
+  * **:point_right:Note:** After updating R, you will need re-install R packages.
 
-  * **⚠️Attention:** When you use RStudio and update R, you should make sure that RStudio
+  * **:warning:Attention:** When you use RStudio and update R, you should make sure that RStudio
   is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
 
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection. From the R prompt, you can
@@ -65,7 +65,7 @@ to be set.
   to point to the most recent version of GAMS that you have installed.
   [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
   for guidance on how to set environment variables.
-  * **⚠️Beware:** changed environment variables are not picked up until you
+  * **:warning:Beware:** changed environment variables are not picked up until you
     restart a process. Therefore, after changing one of the above-mentioned
     environment variables, first restart your command prompt, shell, GAMS
     IDE or GAMS Studio before testing the installation or invoking
@@ -78,7 +78,7 @@ to be set.
     > library(gdxrrw)
     > igdx(gamsSysDir='')
     ```
-  * **⚠️Warning:**, the above will result in an error with recent versions of **gdxrrw** unless you point
+  * **:warning:Warning:**, the above will result in an error with recent versions of **gdxrrw** unless you point
     **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason is
     that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
     that is available as of GAMS 33. You may therefore need to install a newer GAMS version
@@ -146,7 +146,7 @@ the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
 - `cdim=<number of column dimensions>`
 - `rdim=<number of row dimensions>`
-- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` **⚠️Beware:** unlike GDXXRW
+- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` **:warning:Beware:** unlike GDXXRW
   sheet names are case sensitive.
 - `project=Y` (project latin special characters to ASCII for `par=` symbols,
   defaults to `N`)
@@ -158,7 +158,7 @@ Intended to remove special characters from source files. Can be used
 in conjunction with he `project=Y` feature of `xl2gdx.R` to locate and
 convert special-character references to data in GAMS source files.
 
-**⚠️Warning:** this tool operates in-place, apply it only to source files
+**:warning:Warning:** this tool operates in-place, apply it only to source files
 under version control so that you can review and revert the changes.
 
 To invoke `project_to_ASCII.R`, issue:
