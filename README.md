@@ -89,7 +89,7 @@ to be set.
     
     **Beware:** when installing RTools 4.0, do not skip the **Putting Rtools on the PATH** step
     listed in [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html).
-  * Without a compiler, you should download a binary **gdxrrw** package
+  * On Windows without Rtools, you should download a binary **gdxrrw** package
     that matches your R version. For a list of which binary package versions
     match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
 
