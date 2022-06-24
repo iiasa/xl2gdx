@@ -87,8 +87,8 @@ to be set.
     [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
     so that you can compile the **gdxrrw** and other R packages from source.
     
-    **Beware:** when installing RTools 4.0, do not skip the **Putting Rtools on the PATH** step
-    listed in [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html).
+    **Beware:** when installing Rtools 4.0 (the version compatible with R 4.0.x or 4.1.y), make sure to not skip the **Putting Rtools on the PATH** step
+    listed in [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html). Later versions of Rtools do not require this step.
   * On Windows without Rtools, you should download a binary **gdxrrw** package
     that matches your R version. For a list of which binary package versions
     match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
