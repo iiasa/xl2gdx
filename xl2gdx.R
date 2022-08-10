@@ -64,6 +64,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "bad=option") # unknown option
   #args <- c("dummy.xlsx", "par=foo", "output=bar") # symbol before option
   #args <- c("dummy.xlsx", "output=foo", "par=bar", "sysdir=baz") # option after symbol
+  args <- c("dummy.xlsx", "output=foo", "o=bar") # both output and its alias present
   #args <- c("dummy.xlsx", "cdim=1") # symbol attribute without symbol
   #args <- c("dummy.xlsx", "cdim=1", "par=foo") # attribute without preceding symbol
   #args <- c("dummy.xlsx", "par=bar") # only symbol without attributes
@@ -83,30 +84,31 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "sysdir=does_not_exist", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
   
   # Conversion tests
-  #args <- c("test.xls",  "testdir=test1", "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
-  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
-  #args <- c("test.xlsx", "testdir=test2", "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
-  #args <- c("test.xlsx", "testdir=test3", "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
-  #args <- c("test.xlsx", "testdir=test4", "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
-  #args <- c("test.xlsx", "testdir=test5", "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
-  #args <- c("test.xls",  "testdir=test6", "@taskin1.txt")
-  #args <- c("test.xls",  "testdir=test7", "index=Index!B4")
-  #args <- c("test.xls",  "testdir=test8", "index=INDEX!B4")
-  #args <- c("test.xlsx", "testdir=test9", "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
-  #args <- c("test.xls", "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
-  #args <- c("test.xls", "testdir=test11", "@taskin.txt")
+  #args <- c("test.xls",  "testdir=test1",  "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+  #args <- c("test.xlsx", "testdir=test2",  "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
+  #args <- c("test.xlsx", "testdir=test2",  "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
+  #args <- c("test.xlsx", "testdir=test3",  "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
+  #args <- c("test.xlsx", "testdir=test4",  "par=para",   "rng=Sheet1!AV2:BA226",           "cdim=1", "rdim=2", "par=parb", "rng=Sheet1!B2:AT226", "cdim=1", "rdim=2")
+  #args <- c("test.xlsx", "testdir=test5",  "par=para",   "rng=A1",                         "cdim=1", "rdim=1")
+  #args <- c("test.xls",  "testdir=test6",  "@taskin1.txt")
+  #args <- c("test.xls",  "testdir=test7",  "index=Index!B4")
+  #args <- c("test.xls",  "testdir=test8",  "index=INDEX!B4")
+  #args <- c("test.xlsx", "testdir=test9",  "par=para", "rng=Sheet2!c1:d107", "cdim=1", "rdim=1")
+  #args <- c("test.xls",  "testdir=test10", "par=para", "rng=PriceSTAT1!a1", "cdim=1", "rdim=8")
+  #args <- c("test.xls",  "testdir=test11", "@taskin.txt")
   #args <- c("test.xlsx", "testdir=test12", "par=EXCRET_MONOGAST_DATA", "rng=N_excretion!A3", "cdim=2", "rdim=2")
-  #args <- c("test.xls", "testdir=test13", "index=INDEX!B4")
-  #args <- c("test.xls", "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
+  #args <- c("test.xls",  "testdir=test13", "index=INDEX!B4")
+  #args <- c("test.xls",  "testdir=test14", "par=FoodBalanceSheets2", "rng=FoodBalanceSheets2!a1:aw64001", "cdim=1", "rdim=6")
   #args <- c("test.xlsx", "testdir=test15", "par=spacey", "rng=Sheet1!B2", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test16", "par=Chinese", "rng=Sheet1!B2", "cdim=1", "rdim=1")  # should fail
   #args <- c("test.xlsx", "testdir=test17", "par=PrimesPOP_EU27", "rng=EU27!A1:N2", "cdim=1", "rdim=1")
-  #args <- c("test.xls", "testdir=test18", "par=PrimesBiomassRef_MA", "rng=Summary_1!A2:M61", "cdim=1", "rdim=2")
+  #args <- c("test.xls",  "testdir=test18", "par=PrimesBiomassRef_MA", "rng=Summary_1!A2:M61", "cdim=1", "rdim=2")
   #args <- c("test.xlsx", "testdir=test19", "@taskin2.txt")
   #args <- c("test.xlsx", "testdir=test19", "maxdupeerrors=100", "@taskin2.txt") # fail, duplicate entries exceed maxdupeerrors
   #args <- c("test.xlsx", "testdir=test19", "MaxDupeErrors=1000", "@taskin2.txt") # pass. check case insensitivity of maxdupeerrors option
   #args <- c("test.xlsx", "testdir=test20", "par=Energy_req_IP_Biomass", "rng=IP_Biomass!a2:b2787", "rdim=1", "cdim=0", "par=Energy_req_Forest_Residues", "rng=ForestResidues!a2:b2451", "rdim=1", "cdim=0")
-  #args <- c("test.xls", "testdir=test22", "index=INDEX!B4") # https://tidyselect.r-lib.org/reference/faq-external-vector.html
+  #args <- c("test.xls",  "testdir=test22", "index=INDEX!B4") # https://tidyselect.r-lib.org/reference/faq-external-vector.html
+  #args <- c("test.xlsx", "testdir=test23", "@ECHOFiles/xl2gdx.inc") # support o alias for output, do not default to Excel-file-derived output GDX file name when output= specified in options file.
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
@@ -257,11 +259,11 @@ if (!is.na(options_file)) {
 }
 
 # Use given GDX output file, or set default
-if ("output" %in% names(preliminary_options)) {
-  gdx_file <- preliminary_options$output
-} else {
-  gdx_file <- str_c(extensionless_excel_name, ".gdx")
-}
+#if ("output" %in% names(preliminary_options)) {
+#  gdx_file <- preliminary_options$output
+#} else {
+#  gdx_file <- str_c(extensionless_excel_name, ".gdx")
+#}
 rm(extensionless_excel_name)
 
 # ---- Expand options from index sheet or options file ----
@@ -317,7 +319,7 @@ onames <- str_to_lower(option_matches[,2][!is.na(option_matches[,1])])
 values <- option_matches[,3][!is.na(option_matches[,1])]
 
 # Define options classes
-PUBLIC_GLOBAL_OPTIONS <- c("index", "maxdupeerrors", "output", "sysdir")
+PUBLIC_GLOBAL_OPTIONS <- c("index", "maxdupeerrors", "output", "o", "sysdir")
 GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir", "abstestdir")
 SYMBOL_OPTIONS <- c("dset", "par", "set")
 SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng", "project")
@@ -327,6 +329,14 @@ ALL_OPTIONS <- c(GLOBAL_OPTIONS, SYMBOL_OPTIONS, SYMBOL_ATTRIBUTE_OPTIONS)
 if (!all(onames %in% ALL_OPTIONS)) {
   stop(str_glue("Unsupported option(s): '{onames[!(onames %in% ALL_OPTIONS)]}'!"))
 }
+
+# Check that 'output' and its alias 'o' are not both present
+if (("output" %in% onames ) && ("o" %in% onames )) {
+  stop(str_glue("Option 'output' and its synonym 'o' both present, but only one or the other allowed!"))
+}
+
+# Map any alias 'o' to 'output'
+onames[onames %in% "o"] <- "output"
 
 # Classify option names and assert that the classes do not intersect and cover all keywords
 is_global           <- onames %in% GLOBAL_OPTIONS
