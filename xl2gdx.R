@@ -84,7 +84,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "sysdir=does_not_exist", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
   
   # Conversion tests
-  args <- c("test.xls",  "trace=2", "testdir=test1",  "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+  #args <- c("test.xls",  "trace=2", "testdir=test1",  "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
   #args <- c("test.xlsx", "testdir=test2",  "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
   #args <- c("test.xlsx", "testdir=test2",  "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
   #args <- c("test.xlsx", "testdir=test3",  "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
@@ -258,14 +258,6 @@ if (!is.na(options_file)) {
   if (!(file.exists(options_file))) {stop(str_glue("Options file does not exist!: '@{options_file}'"))}
 }
 
-# Use given GDX output file, or set default
-if ("output" %in% names(preliminary_options)) {
-  gdx_file <- preliminary_options$output
-} else {
-  gdx_file <- str_c(extensionless_excel_name, ".gdx")
-}
-rm(extensionless_excel_name)
-
 # ---- Expand options from index sheet or options file ----
 
 more_opts <- c()
@@ -365,6 +357,14 @@ if (length(onames) > 0) {
 } else {
   global_options <- list()
 }
+
+# Use given GDX output file, or set default
+if ("output" %in% names(global_options)) {
+  gdx_file <- global_options$output
+} else {
+  gdx_file <- str_c(extensionless_excel_name, ".gdx")
+}
+rm(extensionless_excel_name)
 
 # Warn
 
