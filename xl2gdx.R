@@ -24,7 +24,7 @@ suppressWarnings(library(cellranger)) # installed when you install tidyverse
 suppressWarnings(library(readxl)) # installed when you install tidyverse
 suppressWarnings(library(stringi)) # installed when you install tidyverse
 
-VERSION <- "v2021-10-27"
+VERSION <- "v2022-08-10"
 RESHAPE <- TRUE # select wgdx.reshape (TRUE) or dplyr-based (FALSE) parameter writing
 GUESS_MAX <- 200000 # rows to read for guessing column type, decrease when memory runs low, increase when guessing goes wrong
 TRIM_WS <- TRUE # trim leading and trailing whitespace from Excel fields? GDXXRW does this.
