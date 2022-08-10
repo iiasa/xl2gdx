@@ -64,7 +64,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "bad=option") # unknown option
   #args <- c("dummy.xlsx", "par=foo", "output=bar") # symbol before option
   #args <- c("dummy.xlsx", "output=foo", "par=bar", "sysdir=baz") # option after symbol
-  args <- c("dummy.xlsx", "output=foo", "o=bar") # both output and its alias present
+  #args <- c("dummy.xlsx", "output=foo", "o=bar") # both output and its alias present
   #args <- c("dummy.xlsx", "cdim=1") # symbol attribute without symbol
   #args <- c("dummy.xlsx", "cdim=1", "par=foo") # attribute without preceding symbol
   #args <- c("dummy.xlsx", "par=bar") # only symbol without attributes
@@ -84,7 +84,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "sysdir=does_not_exist", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
   
   # Conversion tests
-  #args <- c("test.xls",  "testdir=test1",  "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
+  args <- c("test.xls",  "trace=2", "testdir=test1",  "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
   #args <- c("test.xlsx", "testdir=test2",  "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=N") # Re-representing UTF-8 as ASCII+latin
   #args <- c("test.xlsx", "testdir=test2",  "par=para",   "rng=CommodityBalancesCrops1!a1", "cdim=1", "rdim=7", "project=Y") # Projecting UTF-8 to ASCII
   #args <- c("test.xlsx", "testdir=test3",  "dset=doset", "rng=TradeSTAT_LiveAnimals1!f2",            "rdim=1")
@@ -259,11 +259,11 @@ if (!is.na(options_file)) {
 }
 
 # Use given GDX output file, or set default
-#if ("output" %in% names(preliminary_options)) {
-#  gdx_file <- preliminary_options$output
-#} else {
-#  gdx_file <- str_c(extensionless_excel_name, ".gdx")
-#}
+if ("output" %in% names(preliminary_options)) {
+  gdx_file <- preliminary_options$output
+} else {
+  gdx_file <- str_c(extensionless_excel_name, ".gdx")
+}
 rm(extensionless_excel_name)
 
 # ---- Expand options from index sheet or options file ----
@@ -319,7 +319,7 @@ onames <- str_to_lower(option_matches[,2][!is.na(option_matches[,1])])
 values <- option_matches[,3][!is.na(option_matches[,1])]
 
 # Define options classes
-PUBLIC_GLOBAL_OPTIONS <- c("index", "maxdupeerrors", "output", "o", "sysdir")
+PUBLIC_GLOBAL_OPTIONS <- c("index", "maxdupeerrors", "output", "o", "sysdir", "trace")
 GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir", "abstestdir")
 SYMBOL_OPTIONS <- c("dset", "par", "set")
 SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng", "project")
@@ -365,6 +365,8 @@ if (length(onames) > 0) {
 } else {
   global_options <- list()
 }
+
+# Warn
 
 # Check symbol options and their attributes and store them as per-symbol dictionaries
 symbol_dicts <- list()
