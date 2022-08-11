@@ -366,8 +366,6 @@ if ("output" %in% names(global_options)) {
 }
 rm(extensionless_excel_name)
 
-# Warn
-
 # Check symbol options and their attributes and store them as per-symbol dictionaries
 symbol_dicts <- list()
 symbol_dict <- NULL
