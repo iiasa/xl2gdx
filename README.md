@@ -6,6 +6,14 @@ R script to convert Excel to [GDX](https://www.gams.com/latest/docs/UG_GDX.html)
 - Accepts the same arguments and a subset of the options that GDXXRW does.
 - Unlike GDXXRW, works on non-Windows platforms and does not require Office.
 
+**:point_right:Note:** Consider alternatives first:
+- Excel files are not a good choice for storing data for automatic processing.
+  If you have a choice, pick a more robust and standard data storage format.
+- With the [release of GAMS 39](https://www.gams.com/latest/docs/RN_39.html),
+  the [GAMS Connect framework](https://www.gams.com/latest/docs/UG_GAMSCONNECT.html)
+  was introduced. It provides GAMS with an alternative way to read and convert
+  Excel files in a cross-platform-compatible manner
+
 Tests are located in the separate private [xl2gdx-tests](https://github.com/iiasa/xl2gdx-tests)
 repository. That repository is private because the licensing conditions of
 the corner-case input Excel sheets included with the tests are diverse and
