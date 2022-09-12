@@ -122,6 +122,7 @@ USAGE <- str_c("Usage:",
               "Global options (provide these first):",
               "    output=<GDX file> (if omitted, output to <Excel file> but with a .gdx extension)",
               "    index='<sheet>!<start_colrow>'",
+              "    squeeze=<Y|N> (if Y do not write zero values, defaults to Y)",
               "    sysdir=<GAMS system directory> (if omitted, the PATH/[DY]LD_LIBRARY_PATH/R_GAMS_SYSDIR environment variables are tried instead)",
               "    maxdupeerrors=<max>",
               "Symbol options (one or more):",
@@ -132,7 +133,7 @@ USAGE <- str_c("Usage:",
               "    cdim=<number of column dimensions>",
               "    rdim=<number of row dimensions>",
               "    rng='[<sheet>!]<start_colrow>[:<end_colrow>]'",
-              "    project=Y (project latin special characters to ASCII for par symbols, defaults to N)",
+              "    project=<Y|N> (project latin special characters to ASCII for par symbols, defaults to N)",
               sep="\n")
 
 # No arguments? Error with usage.
@@ -224,6 +225,13 @@ if ("abstestdir" %in% names(preliminary_options)) {
   setwd(preliminary_options$abstestdir)
 }
 
+# Check squeeze option
+squeeze <- 'y'
+if ("squeeze" %in% names(preliminary_options)) {
+  squeeze <- str_to_lower(preliminary_options$squeeze)
+  if (!(squeeze %in% c("y", "n"))) {stop("Only Y or N are valid values for the squeeze= option!")}
+}
+
 # Check maxdupeerrors option
 max_dupe_errors <- NA
 dupe_errors <- 0
@@ -251,7 +259,6 @@ if ("sysdir" %in% names(preliminary_options)) {
 if (excel_file != "dummy.xls" && excel_file != "dummy.xlsx") {
   if (!(file.exists(excel_file))) {stop(str_glue("Excel file does not exist!: '{excel_file}'"))}
 }
-
 
 # Make sure that any specified options file exists.
 if (!is.na(options_file)) {
@@ -311,7 +318,7 @@ onames <- str_to_lower(option_matches[,2][!is.na(option_matches[,1])])
 values <- option_matches[,3][!is.na(option_matches[,1])]
 
 # Define options classes
-PUBLIC_GLOBAL_OPTIONS <- c("index", "maxdupeerrors", "output", "o", "sysdir", "trace")
+PUBLIC_GLOBAL_OPTIONS <- c("index", "maxdupeerrors", "output", "o", "squeeze", "sysdir", "trace")
 GLOBAL_OPTIONS <- c(PUBLIC_GLOBAL_OPTIONS, "testdir", "abstestdir")
 SYMBOL_OPTIONS <- c("dset", "par", "set")
 SYMBOL_ATTRIBUTE_OPTIONS <- c("cdim", "rdim", "rng", "project")
@@ -595,7 +602,7 @@ for (symbol_dict in symbol_dicts) {
       duplicate_entries <- entries_before_dropping - length(tib)*tally(tib)
       # Warn about duplicate entries
       if (duplicate_entries > 0) warning(str_glue("There were {duplicate_entries} duplicate entries for symbol {name}")) 
-      # Handle duplucate entries
+      # Handle duplicate entries
       if (duplicate_entries > 0) {
         # Throw an error when no duplicate entries are allowed
         if (is.na(max_dupe_errors)) stop(str_glue("Duplicate entries not allowed, no maxdupeerrors option provided!"))
@@ -609,7 +616,7 @@ for (symbol_dict in symbol_dicts) {
     }
     rm(col_extended, col_names_original, col_name_already_occurred)
 
-    # Project-to ASCII or re-encode latin special characters
+    # Project-to ASCII or re-encode Latin special characters
     encoding <- "ASCII"
     for (col in 1:rdim) {
       if (typeof(tib[[col]]) == "character") {
@@ -769,7 +776,7 @@ if (.Platform$OS.type == "windows") {
 }
 
 # Write the symbols
-wgdx.lst(gdx_file, out_list)
+wgdx.lst(gdx_file, out_list, squeeze=squeeze)
 
 # Print total processing time
 cat(str_glue("Total time = {format(Sys.time()-start_time)}"), sep='\n')
