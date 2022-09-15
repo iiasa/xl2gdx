@@ -82,6 +82,7 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("dummy.xlsx", "par=foo", "rng=bar!A1:B2", "cdim=1", "rdim=1", "project=invalid") # invalid value for project
   #args <- c("dummy.xlsx", "dset=foo", "rng=A1", "rdim=1", "project=Y") # project only supported for par
   #args <- c("dummy.xlsx", "sysdir=does_not_exist", "dset=foo", "rng=A1", "rdim=1") # invalid sysdir
+  #args <- c("dummy.xlsx", "squeeze=X", "dset=foo", "rng=A1", "rdim=1") # invalid squeeze value
   
   # Conversion tests
   #args <- c("test.xls",  "trace=2", "testdir=test1",  "par=para",   "rng=toUse!c4:f39",               "cdim=1", "rdim=1")
@@ -109,6 +110,8 @@ if (Sys.getenv("RSTUDIO") == "1") {
   #args <- c("test.xlsx", "testdir=test20", "par=Energy_req_IP_Biomass", "rng=IP_Biomass!a2:b2787", "rdim=1", "cdim=0", "par=Energy_req_Forest_Residues", "rng=ForestResidues!a2:b2451", "rdim=1", "cdim=0")
   #args <- c("test.xls",  "testdir=test22", "index=INDEX!B4") # https://tidyselect.r-lib.org/reference/faq-external-vector.html
   #args <- c("test.xlsx", "testdir=test23", "@ECHOFiles/xl2gdx.inc") # support o alias for output, do not default to Excel-file-derived output GDX file name when output= specified in options file.
+  #args <- c("test.xlsx", "testdir=test24", "squeeze=Y", "par=para", "rng=Sheet1!a1:e11", "rdim=1", "cdim=1") # squeeze=Y
+  #args <- c("test.xlsx", "testdir=test25", "squeeze=N", "par=para", "rng=Sheet1!a1:e11", "rdim=1", "cdim=1") # squeeze=N
 } else {
   args <- commandArgs(trailingOnly=TRUE)
 }
