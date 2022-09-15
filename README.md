@@ -136,12 +136,10 @@ the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
 #### Global options (provide these first):
 
-- `output=<GDX file>` (if omitted, output to `<Excel file>` but with a `.gdx`
-  extension)
+- `output=<GDX file>` If omitted, output to `<Excel file>` but with a `.gdx` extension. The synonym `o` is supported, but its use is discouraged.
 - `index='<sheet>!<start_colrow>'`
-- `sysdir=<GAMS system directory>`. When omitted, the GAMS installation
-  directory must be reachable via an environment variable
-  ([see above](#dependencies)).
+- `squeeze=<Y|N>` If Y, do not write zero values. Defaults to Y.
+- `sysdir=<GAMS system directory>` When omitted, the GAMS installation directory must be reachable via an environment variable ([see above](#dependencies)).
 - `maxdupeerrors=<max>`
 
 #### Symbol options (one or more):
@@ -156,8 +154,7 @@ the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
 - `rdim=<number of row dimensions>`
 - `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` **:warning:Beware:** unlike GDXXRW
   sheet names are case sensitive.
-- `project=Y` (project latin special characters to ASCII for `par=` symbols,
-  defaults to `N`)
+- `project=<Y|N>` Project Latin special characters to ASCII for `par=` symbols. Defaults to `N`.
 
 ### project_to_ASCII.R
 
