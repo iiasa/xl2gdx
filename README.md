@@ -107,13 +107,23 @@ to be set.
 ## Usage
 
 Both `xl2gdx.R` and `project_to_ASCII.R` can be invoked via the
-[`Rscript`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/Rscript.html) utility.
-It is recommended to add the directory containing `Rscript` to your `PATH`
-environment variable so that you can invoke it directly. When you do so on
-Linux/MacOS, you can omit the leading `Rscript` from the shell invocation of
-the scripts since `Rscript` will then be invoked via the
-[shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix))
-present in both scripts.
+[`Rscript`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/Rscript.html) utility
+that is part of the R installation. When you followed the instructions in the prior
+section, the directory containing the `Rscript` utility will in your `PATH`
+environment variable so that you can use `Rscript` from a command prompt or shell.
+
+### xl2gdx.R
+
+To invoke `xl2gdx.R` from the command line or shell, issue:
+
+`[Rscript ]xl2gdx.R <Excel file> [options] [@<options file>] [symbols]`
+
+The supported options are listed below. Details for most options are given in
+the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
+
+On Linux/MacOS, you can omit the leading `Rscript` since `Rscript` will invoked
+automatically via the [shebang header](https://en.wikipedia.org/wiki/Shebang_(Unix))
+present in the script.
 
 When replacing a GDXXRW invocation in your GAMS code with `xl2gdx.R`, you will typically
 have a
@@ -124,15 +134,6 @@ replace the `GDXXRW` or `<path to GAMS dir>/GDXXRW` part of that invocation with
 `Rscript <relative path to xl2gdx.R>/xl2gdx.R` and things should work. To verify,
 the output of both invocations can be compared with
 [`GDXDIFF`](https://www.gams.com/36/docs/T_GDXDIFF.html?search=gdxdiff).
-
-### xl2gdx.R
-
-To invoke `xl2gdx.R` from the command line or shell, issue:
-
-`[Rscript ]xl2gdx.R <Excel file> [options] [@<options file>] [symbols]`
-
-The supported options are listed below. Details for most options are given in
-the [GDXXRW manual](https://www.gams.com/latest/docs/T_GDXXRW.html).
 
 #### Global options (provide these first):
 
