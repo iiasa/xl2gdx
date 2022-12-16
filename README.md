@@ -44,7 +44,9 @@ to be set.
   have good reasons to keep it. Be sure to delete any references to a removed R installation
   as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
   
-  * **:point_right:Note:** After updating R, you will need re-install R packages.
+  * **:point_right:Note:** After updating R, you will need re-install R packages and update the
+  environment variables that point to the R installation directory since the path includes the
+  version number.
 
   * **:warning:Attention:** When you use RStudio and update R, you should make sure that RStudio
   is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
