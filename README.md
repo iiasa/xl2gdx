@@ -31,6 +31,9 @@ same holds for the `project_to_ASCII.R` helper script. The dependencies listed
 below should first be installed though, and some environment variable may need
 to be set.
 
+**Carefully read** the instructions below, **heed the warnings**, and follow
+the links where needed.
+
 ## Dependencies
 
 `xl2gdx.R` depends on:
