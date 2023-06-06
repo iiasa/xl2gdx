@@ -12,7 +12,9 @@ R script to convert Excel to [GDX](https://www.gams.com/latest/docs/UG_GDX.html)
 - With the [release of GAMS 39](https://www.gams.com/latest/docs/RN_39.html),
   the [GAMS Connect framework](https://www.gams.com/latest/docs/UG_GAMSCONNECT.html)
   was introduced. It provides GAMS with an alternative way to read and convert
-  Excel files in a cross-platform-compatible manner
+  Excel files in a cross-platform-compatible manner.
+- In the [GAMS 41 release notes](https://www.gams.com/latest/docs/RN_41.html#g4110_GDXRRW),
+  GAMS Corp. announced that the **gdxrrw** package on which this script depends is deprecated.
 
 Tests are located in the separate private [xl2gdx-tests](https://github.com/iiasa/xl2gdx-tests)
 repository. That repository is private because the licensing conditions of
