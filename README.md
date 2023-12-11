@@ -6,15 +6,16 @@ R script to convert Excel to [GDX](https://www.gams.com/latest/docs/UG_GDX.html)
 - Accepts the same arguments and a subset of the options that GDXXRW does.
 - Unlike GDXXRW, works on non-Windows platforms and does not require Office.
 
-**:point_right:Note:** Consider alternatives first:
-- Excel files are not a good choice for storing data for automatic processing.
-  If you have a choice, pick a more robust and standard data storage format.
-- With the [release of GAMS 39](https://www.gams.com/latest/docs/RN_39.html),
-  the [GAMS Connect framework](https://www.gams.com/latest/docs/UG_GAMSCONNECT.html)
-  was introduced. It provides GAMS with an alternative way to read and convert
-  Excel files in a cross-platform-compatible manner.
-- In the [GAMS 41 release notes](https://www.gams.com/latest/docs/RN_41.html#g4110_GDXRRW),
-  GAMS Corp. announced that the **gdxrrw** package on which this script depends is deprecated.
+> [!NOTE]
+> Consider alternatives first:
+> - Excel files are not a good choice for storing data for automatic processing.
+>   If you have a choice, pick a more robust and standard data storage format.
+> - With the [release of GAMS 39](https://www.gams.com/latest/docs/RN_39.html),
+>   the [GAMS Connect framework](https://www.gams.com/latest/docs/UG_GAMSCONNECT.html)
+>   was introduced. It provides GAMS with an alternative way to read and convert
+>   Excel files in a cross-platform-compatible manner.
+> - In the [GAMS 41 release notes](https://www.gams.com/latest/docs/RN_41.html#g4110_GDXRRW),
+>   GAMS Corp. announced that the **gdxrrw** package on which this script depends is deprecated.
 
 Tests are located in the separate private [xl2gdx-tests](https://github.com/iiasa/xl2gdx-tests)
 repository. That repository is private because the licensing conditions of
@@ -44,17 +45,20 @@ the links where needed.
   On Windows, this directory ends in `R-x.y.z\bin\x64` for the 64-bit binaries, where
   `x.y.z` is the R version.
   
-  * **:warning:Warning:** When installing R, old R versions are not automatically removed. Having
-  multiple R versions installed can cause confusion. Remove any older R installations unless you
-  have good reasons to keep it. Be sure to delete any references to a removed R installation
-  as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
+  > [!WARNING]
+  > When installing R, old R versions are not automatically removed. Having
+  > multiple R versions installed can cause confusion. Remove any older R installations unless you
+  > have good reasons to keep it. Be sure to delete any references to a removed R installation
+  > as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
   
-  * **:point_right:Note:** After updating R, you will need re-install R packages and update the
-  environment variables that point to the R installation directory since the path includes the
-  version number.
+  > [!NOTE]
+  > After updating R, you will need re-install R packages and update the
+  > environment variables that point to the R installation directory since the path includes the
+  > version number.
 
-  * **:warning:Attention:** When you use RStudio and update R, you should make sure that RStudio
-  is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
+  > [!IMPORTANT]
+  > When you use RStudio and update R, you should make sure that RStudio
+  > is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
 
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection. From the R prompt, you can
   install the tidyverse by issuing:
@@ -80,11 +84,12 @@ the links where needed.
   to point to the most recent version of GAMS that you have installed.
   [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
   for guidance on how to set environment variables.
-  * **:warning:Beware:** changed environment variables are not picked up until you
-    restart a process. Therefore, after changing one of the above-mentioned
-    environment variables, first restart your command prompt, shell, GAMS
-    IDE or GAMS Studio before testing the installation or invoking
-    `xl2gdx.R`.
+  * > [!WARNING]
+    > Changed environment variables are not picked up until you
+    > restart a process. Therefore, after changing one of the above-mentioned
+    > environment variables, first restart your command prompt, shell, GAMS
+    > IDE or GAMS Studio before testing the installation or invoking
+    > `xl2gdx.R`.
   * If you use an environment variable to point to the GAMS installation
     directory, the following should work and report the used environment
     variable:
@@ -93,17 +98,20 @@ the links where needed.
     > library(gdxrrw)
     > igdx(gamsSysDir='')
     ```
-  * **:warning:Warning:**, the above will result in an error with recent versions of **gdxrrw** unless you point
-    **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason is
-    that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
-    that is available as of GAMS 33. You may therefore need to install a newer GAMS version
-    and point **gdxrrw** at it.
+    > [!WARNING]
+    > The above will result in an error with recent versions of **gdxrrw** unless you point
+    > **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason
+    > is that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
+    > that is available as of GAMS 33. You may therefore need to install a newer GAMS version
+    > and point **gdxrrw** at it.
   * On Windows, it will likely prevent problems when you first
     [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
     so that you can compile the **gdxrrw** and other R packages from source.
-    
-    **:warning:Beware:** when installing Rtools 4.0 (the version compatible with R 4.0.x or 4.1.y), make sure to not skip the **Putting Rtools on the PATH** step
-    listed in [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html). Later versions of Rtools do not require this step.
+    > [!WARNING]
+    > When installing Rtools 4.0 (the version compatible with R 4.0.x or 4.1.y),
+    > make sure to not skip the **Putting Rtools on the PATH** step listed in
+    > [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html).
+    > Later versions of Rtools do not require this step.
   * On Windows without Rtools, you should download a binary **gdxrrw** package
     that matches your R version. For a list of which binary package versions
     match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
@@ -160,8 +168,9 @@ the output of both invocations can be compared with
 
 - `cdim=<number of column dimensions>`
 - `rdim=<number of row dimensions>`
-- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` **:warning:Beware:** unlike GDXXRW
-  sheet names are case sensitive.
+- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'`
+  > [!WARNING]
+  > Unlike GDXXRW sheet names are case sensitive.
 - `project=<Y|N>` Project Latin special characters to ASCII for `par=` symbols. Defaults to `N`.
 
 ### project_to_ASCII.R
@@ -171,8 +180,9 @@ Intended to remove special characters from source files. Can be used
 in conjunction with he `project=Y` feature of `xl2gdx.R` to locate and
 convert special-character references to data in GAMS source files.
 
-**:warning:Warning:** this tool operates in-place, apply it only to source files
-under version control so that you can review and revert the changes.
+> [!CAUTION]
+> This tool operates in-place, apply it only to source files under
+> version control so that you can review and revert the changes.
 
 To invoke `project_to_ASCII.R`, issue:
 
