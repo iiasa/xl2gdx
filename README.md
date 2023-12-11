@@ -46,21 +46,21 @@ After installation, ensure that `R` and `Rscript` are on-path by adding the righ
 installation subdirectory to the `PATH` environment variable. On Windows, this
 directory ends in `R-x.y.z\bin\x64` for the 64-bit binaries, where `x.y.z` is the
 R version.
-  
-[!WARNING]
-When installing R, old R versions are not automatically removed. Having
-multiple R versions installed can cause confusion. Remove any older R installations unless you
-have good reasons to keep it. Be sure to delete any references to a removed R installation
-as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
-  
-[!NOTE]
-After updating R, you will need re-install R packages and update the
-environment variables that point to the R installation directory since the path includes the
-version number.
 
-[!IMPORTANT]
-When you use RStudio and update R, you should make sure that RStudio
-is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
+> [!WARNING]
+> When installing R, old R versions are not automatically removed. Having
+> multiple R versions installed can cause confusion. Remove any older R installations unless you
+> have good reasons to keep it. Be sure to delete any references to a removed R installation
+> as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
+  
+> [!NOTE]
+> After updating R, you will need re-install R packages and update the
+> environment variables that point to the R installation directory since the path includes the
+> version number.
+
+> [!IMPORTANT]
+> When you use RStudio and update R, you should make sure that RStudio
+> is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
 
 ### Tidyverse
 
@@ -184,9 +184,8 @@ the output of both invocations can be compared with
 
 - `cdim=<number of column dimensions>`
 - `rdim=<number of row dimensions>`
-- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'`
-  > [!WARNING]
-  > Unlike GDXXRW sheet names are case sensitive.
+- `rng='[<sheet>!]<start_colrow>[:<end_colrow>]'` 
+  ⚠️ Unlike GDXXRW sheet names are case sensitive.
 - `project=<Y|N>` Project Latin special characters to ASCII for `par=` symbols. Defaults to `N`.
 
 ### project_to_ASCII.R
