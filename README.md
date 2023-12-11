@@ -39,82 +39,98 @@ the links where needed.
 
 ## Dependencies
 
-`xl2gdx.R` depends on:
-- [R](https://www.r-project.org). After installation, ensure that `R` and `Rscript` are
-  on-path by adding the right installation subdirectory to the `PATH` environment variable.
-  On Windows, this directory ends in `R-x.y.z\bin\x64` for the 64-bit binaries, where
-  `x.y.z` is the R version.
-  
-  > [!WARNING]
-  > When installing R, old R versions are not automatically removed. Having
-  > multiple R versions installed can cause confusion. Remove any older R installations unless you
-  > have good reasons to keep it. Be sure to delete any references to a removed R installation
-  > as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
-  
-  > [!NOTE]
-  > After updating R, you will need re-install R packages and update the
-  > environment variables that point to the R installation directory since the path includes the
-  > version number.
+### R
 
-  > [!IMPORTANT]
-  > When you use RStudio and update R, you should make sure that RStudio
-  > is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
+The [R](https://www.r-project.org) language runtime is required to run `xl2gdx.R`.
+After installation, ensure that `R` and `Rscript` are on-path by adding the right
+installation subdirectory to the `PATH` environment variable. On Windows, this
+directory ends in `R-x.y.z\bin\x64` for the 64-bit binaries, where `x.y.z` is the
+R version.
+  
+[!WARNING]
+When installing R, old R versions are not automatically removed. Having
+multiple R versions installed can cause confusion. Remove any older R installations unless you
+have good reasons to keep it. Be sure to delete any references to a removed R installation
+as could be present in the `PATH`, `R_GAMS_SYSDIR`, and other environment variables.
+  
+[!NOTE]
+After updating R, you will need re-install R packages and update the
+environment variables that point to the R installation directory since the path includes the
+version number.
 
-- The [tidyverse](https://www.tidyverse.org/) curated R package collection. From the R prompt, you can
-  install the tidyverse by issuing:
+[!IMPORTANT]
+When you use RStudio and update R, you should make sure that RStudio
+is using the new R installation by configuring it under **Tools >> Global options ... >> General**.
+
+### Tidyverse
+
+The [tidyverse](https://www.tidyverse.org/) curated R package collection must
+be installed. You can do so from the R prompt by issuing:
   ```R
   install.packages("tidyverse")
   ```
-  Alternatively, you can use the RStudio package management tab, but make sure
-  that RStudio is using the on-path R installation.
-- [**gdxrrw**](https://github.com/GAMS-dev/gdxrrw), an R package for
-  reading/writing GDX files from R. You cannot install it from CRAN, you have
-  to install it from GitHub as per [these instructions](https://github.com/GAMS-dev/gdxrrw#how-to-install-from-github).
-  To [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
-  containing the GDX libraries that it needs to read/write GDX files, you
-  can use the `sysdir` command line option (see below) or make sure a
-  sufficiently recent GAMS installation directory is included in either the
-  `PATH` (on Windows), or `LD_LIBRARY_PATH` (on Linux), or `DYLD_LIBRARY_PATH`
-  (on MacOS) environment variable.
+Alternatively, you can use the RStudio package management tab, but make sure
+that RStudio is using the on-path R installation.
+
+### gdxrrw
+
+[**gdxrrw**](https://github.com/GAMS-dev/gdxrrw) is an R package for
+reading/writing GDX files from R. It is required by `xl2gdx.R`.
+You cannot install it from CRAN, you have to install it from GitHub as per
+[these instructions](https://github.com/GAMS-dev/gdxrrw#how-to-install-from-github).
+To [make **gdxrrw** find the GAMS system directory](https://github.com/GAMS-dev/gdxrrw#checking-if-gdxrrw-is-installed-correctly)
+containing the GDX libraries that it needs to read/write GDX files, you
+can use the `sysdir` command line option (see below) or make sure a
+sufficiently recent GAMS installation directory is included in either the
+`PATH` (on Windows), or `LD_LIBRARY_PATH` (on Linux), or `DYLD_LIBRARY_PATH`
+(on MacOS) environment variable.
   
-  However, it is **strongly recommended** to instead make your environment
-  configuration explicit and  purpose-specific by setting the
-  **gdxrrw**-dedicated environment variable `R_GAMS_SYSDIR` to point to
-  a GAMS installation directory. For reasons explained below, it is best
-  to point to the most recent version of GAMS that you have installed.
-  [See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
-  for guidance on how to set environment variables.
-  * > [!WARNING]
-    > Changed environment variables are not picked up until you
-    > restart a process. Therefore, after changing one of the above-mentioned
-    > environment variables, first restart your command prompt, shell, GAMS
-    > IDE or GAMS Studio before testing the installation or invoking
-    > `xl2gdx.R`.
-  * If you use an environment variable to point to the GAMS installation
-    directory, the following should work and report the used environment
-    variable:
-    ```R
-    $ R
-    > library(gdxrrw)
-    > igdx(gamsSysDir='')
-    ```
-    > [!WARNING]
-    > The above will result in an error with recent versions of **gdxrrw** unless you point
-    > **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason
-    > is that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
-    > that is available as of GAMS 33. You may therefore need to install a newer GAMS version
-    > and point **gdxrrw** at it.
-  * On Windows, it will likely prevent problems when you first
-    [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
-    so that you can compile the **gdxrrw** and other R packages from source.
-    > [!WARNING]
-    > When installing Rtools 4.0 (the version compatible with R 4.0.x or 4.1.y),
-    > make sure to not skip the **Putting Rtools on the PATH** step listed in
-    > [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html).
-    > Later versions of Rtools do not require this step.
-  * On Windows without Rtools, you should download a binary **gdxrrw** package
-    that matches your R version. For a list of which binary package versions
-    match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
+However, it is **strongly recommended** to instead make your environment
+configuration explicit and  purpose-specific by setting the
+**gdxrrw**-dedicated environment variable `R_GAMS_SYSDIR` to point to
+a GAMS installation directory. For reasons explained below, it is best
+to point to the most recent version of GAMS that you have installed.
+[See here](https://iiasa.github.io/GLOBIOM/R.html#setting-environment-variables)
+for guidance on how to set environment variables.
+
+> [!WARNING]
+> Changed environment variables are not picked up until you
+> restart a process. Therefore, after changing one of the above-mentioned
+> environment variables, first restart your command prompt, shell, GAMS
+> IDE or GAMS Studio before testing the installation or invoking
+> `xl2gdx.R`.
+
+If you use an environment variable to point to the GAMS installation
+directory, the following should work and report the used environment
+variable:
+```R
+$ R
+> library(gdxrrw)
+> igdx(gamsSysDir='')
+```
+
+> [!WARNING]
+> The above will result in an error with recent versions of **gdxrrw** unless you point
+> **gdxxrrw** at a GAMS 33 or newer installation directory as per the above instructions. The reason
+> is that **gdxrrw** has switched to using an improved GDX [API](https://en.wikipedia.org/wiki/API)
+> that is available as of GAMS 33. You may therefore need to install a newer GAMS version
+> and point **gdxrrw** at it.
+
+> [!TIP]
+> On Windows, it will likely prevent problems when you first
+> [install Rtools](https://cran.r-project.org/bin/windows/Rtools/)
+> so that you can compile the **gdxrrw** and other R packages from source.
+
+> [!CAUTION]
+> When installing Rtools 4.0 (the version compatible with R 4.0.x or 4.1.y),
+> make sure to not skip the **Putting Rtools on the PATH** step listed in
+> [its installation instructions](https://cran.r-project.org/bin/windows/Rtools/rtools40.html).
+> Later versions of Rtools do not require this step.
+
+> [!NOTE]
+> On Windows without Rtools, you should download a binary **gdxrrw** package
+> that matches your R version. For a list of which binary package versions
+> match what R versions, see the [**gdxrrw** wiki](https://github.com/GAMS-dev/gdxrrw/wiki).
 
 `project_to_ASCII.R` depends on:
 - The [tidyverse](https://www.tidyverse.org/) curated R package collection.
